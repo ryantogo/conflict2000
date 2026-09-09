@@ -1,0 +1,599 @@
+/**
+ * Strategic action: deployment, strike bombing, invasion and border war.
+ *
+ * The original's key restraint is that the aggressive options simply are not
+ * on the menu until relations are already bad — you cannot ambush a friend.
+ * Combat itself is a running `warProgress` figure per front, shown to the
+ * player only as a bar and a sentence from the front-line commander.
+ */
+
+import type { Forces, FrontId, GameState, NationId, StrategicDirective } from './types';
+import { FRONTS } from './types';
+import { clamp } from './ladders';
+import { canInvade } from './diplomacy';
+import { freeBrigades } from './state';
+import type { Rng } from './rng';
+import {
+  STRIKE_CIVILIAN,
+  STRIKE_FAILED,
+  STRIKE_INDUSTRIAL,
+  STRIKE_MILITARY,
+  WAR_DECLARED,
+  WAR_GAINS,
+  WAR_LOSSES,
+  expand,
+} from '../data/headlines';
+
+export interface StrategicOption {
+  id: StrategicDirective;
+  label: string;
+  disabledReason?: string;
+}
+
+const STRIKE_LABELS: Record<string, string> = {
+  strike_industrial: 'Tactical airstrike on industrial target',
+  strike_military: 'Tactical airstrike on military target',
+  strike_civilian: 'Tactical airstrike on civilian target',
+  strike_nuclear: 'Tactical airstrike on nuclear installation',
+};
+
+export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
+  const n = s.nations[id];
+  const front = s.fronts[id];
+  const free = freeBrigades(s);
+  const opts: StrategicOption[] = [];
+
+  if (front.atWar) {
+    // Once fighting starts the menu narrows to feeding the battle.
+    opts.push({
+      id: 'deploy_brigade',
+      label: 'Deploy extra troop brigade',
+      ...(free < 1 ? { disabledReason: 'No brigades are free.' } : {}),
+    });
+    opts.push({
+      id: 'deploy_tanks',
+      label: 'Deploy extra tank battalion',
+      ...(s.israel.stockpile.tanks < 200
+        ? { disabledReason: 'The armoured reserve is exhausted.' }
+        : {}),
+    });
+    opts.push({
+      id: 'deploy_sam',
+      label: 'Deploy extra SAM battery',
+      ...(s.israel.stockpile.sam < 5 ? { disabledReason: 'No batteries in reserve.' } : {}),
+    });
+    opts.push({
+      id: 'deploy_air',
+      label: 'Increase air cover',
+      ...(s.israel.stockpile.aircraft < 20
+        ? { disabledReason: 'No squadrons can be spared.' }
+        : {}),
+    });
+    opts.push({ id: 'deploy_all', label: 'Deploy all extra forces' });
+    opts.push({ id: 'withdraw_brigade', label: 'Withdraw single brigade' });
+    if (s.israel.warheads > 0) {
+      opts.push({ id: 'nuclear_strike', label: 'Launch thermonuclear attack' });
+    }
+    opts.push({ id: 'none', label: 'Continue campaign' });
+    return opts;
+  }
+
+  if (n.collapsed) {
+    return [{ id: 'none', label: 'Take no action', disabledReason: `${n.name} has no government.` }];
+  }
+
+  if (front.demilitarised) {
+    return [
+      {
+        id: 'withdraw',
+        label: 'Immediate withdrawal of forces',
+      },
+      {
+        id: 'none',
+        label: 'Take no action',
+        disabledReason:
+          'Since the recent conflict, the U.N. have made this a military free zone.',
+      },
+    ];
+  }
+
+  opts.push({
+    id: 'small_deployment',
+    label: 'Increase presence with small scale deployment',
+    ...(free < 1 ? { disabledReason: 'No brigades are free.' } : {}),
+  });
+
+  // A full deployment is the first move the world can read as intent.
+  if (n.relations <= 5) {
+    opts.push({
+      id: 'full_deployment',
+      label: 'Full scale immediate deployment',
+      ...(free < 2 ? { disabledReason: 'At least two free brigades are required.' } : {}),
+    });
+  }
+  if (n.relations <= 4) {
+    opts.push({
+      id: 'max_deployment',
+      label: 'Maximum further deployment',
+      ...(free < 3 ? { disabledReason: 'At least three free brigades are required.' } : {}),
+    });
+  }
+
+  // Strike bombing needs poor relations and aircraft to fly.
+  if (n.relations <= 3) {
+    const noAir = s.israel.stockpile.aircraft < 30;
+    for (const k of ['strike_military', 'strike_industrial', 'strike_civilian'] as const) {
+      opts.push({
+        id: k,
+        label: STRIKE_LABELS[k],
+        ...(noAir ? { disabledReason: 'Insufficient aircraft available.' } : {}),
+      });
+    }
+    if (n.nuclearProgress > 20) {
+      opts.push({
+        id: 'strike_nuclear',
+        label: STRIKE_LABELS.strike_nuclear,
+        ...(noAir ? { disabledReason: 'Insufficient aircraft available.' } : {}),
+      });
+    }
+  }
+
+  const inv = canInvade(s, id);
+  opts.push({
+    id: 'invade',
+    label: 'Invade',
+    ...(inv.ok ? {} : { disabledReason: inv.reason ?? 'Not possible.' }),
+  });
+
+  if (front.deployed.brigades > 0) {
+    opts.push({ id: 'withdraw', label: 'Immediate withdrawal of forces' });
+    opts.push({ id: 'defensive', label: 'Hold position and deploy for defensive campaign' });
+  }
+  opts.push({ id: 'none', label: 'Take no action' });
+  return opts;
+}
+
+export interface MilitaryEvent {
+  text: string;
+  category: 'war' | 'nuclear';
+  weight: number;
+}
+
+function ctxFor(s: GameState, id: NationId, israelIsSubject: boolean) {
+  const n = s.nations[id];
+  return israelIsSubject
+    ? {
+        subjAdj: 'Israeli',
+        subjName: 'Israel',
+        subjCapital: 'Jerusalem',
+        objAdj: n.adjective,
+        objName: n.name,
+        objCapital: n.capital,
+      }
+    : {
+        subjAdj: n.adjective,
+        subjName: n.name,
+        subjCapital: n.capital,
+        objAdj: 'Israeli',
+        objName: 'Israel',
+        objCapital: 'Jerusalem',
+      };
+}
+
+function moveFromStockpile(s: GameState, front: FrontId, want: Partial<Forces>): void {
+  const st = s.israel.stockpile;
+  const dep = s.fronts[front].deployed;
+  if (want.brigades) {
+    const n = Math.min(want.brigades, freeBrigades(s));
+    dep.brigades += n;
+  }
+  if (want.tanks) {
+    const n = Math.min(want.tanks, st.tanks);
+    st.tanks -= n;
+    dep.tanks += n;
+  }
+  if (want.aircraft) {
+    const n = Math.min(want.aircraft, st.aircraft);
+    st.aircraft -= n;
+    dep.aircraft += n;
+  }
+  if (want.sam) {
+    const n = Math.min(want.sam, st.sam);
+    st.sam -= n;
+    dep.sam += n;
+  }
+}
+
+function returnToStockpile(s: GameState, front: FrontId, all: boolean): void {
+  const st = s.israel.stockpile;
+  const dep = s.fronts[front].deployed;
+  const frac = all ? 1 : 0.34;
+  const t = Math.floor(dep.tanks * frac);
+  const a = Math.floor(dep.aircraft * frac);
+  const m = Math.floor(dep.sam * frac);
+  const b = all ? dep.brigades : Math.min(1, dep.brigades);
+  dep.tanks -= t;
+  dep.aircraft -= a;
+  dep.sam -= m;
+  dep.brigades -= b;
+  st.tanks += t;
+  st.aircraft += a;
+  st.sam += m;
+}
+
+export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
+  const events: MilitaryEvent[] = [];
+
+  for (const id of FRONTS) {
+    const directive = s.directives.strategic[id];
+    if (!directive || directive === 'none') continue;
+    const n = s.nations[id];
+    const front = s.fronts[id];
+    const ctx = ctxFor(s, id, true);
+
+    switch (directive) {
+      case 'small_deployment':
+        moveFromStockpile(s, id, { brigades: 1, tanks: 150, sam: 4 });
+        // Small movements "can be explained away with excuses".
+        n.relationsPoints = clamp(n.relationsPoints - 4, -100, 100);
+        break;
+
+      case 'full_deployment':
+        moveFromStockpile(s, id, { brigades: 2, tanks: 400, aircraft: 40, sam: 10 });
+        n.relationsPoints = clamp(n.relationsPoints - 14, -100, 100);
+        s.tension = clamp(s.tension + 4, 0, 100);
+        break;
+
+      case 'max_deployment':
+        moveFromStockpile(s, id, { brigades: 3, tanks: 700, aircraft: 80, sam: 16 });
+        n.relationsPoints = clamp(n.relationsPoints - 20, -100, 100);
+        s.tension = clamp(s.tension + 7, 0, 100);
+        break;
+
+      case 'withdraw':
+        returnToStockpile(s, id, true);
+        n.relationsPoints = clamp(n.relationsPoints + 8, -100, 100);
+        s.tension = clamp(s.tension - 3, 0, 100);
+        break;
+
+      case 'defensive':
+        front.warProgress = clamp(front.warProgress + 4, -100, 100);
+        break;
+
+      case 'strike_military':
+      case 'strike_industrial':
+      case 'strike_civilian':
+      case 'strike_nuclear': {
+        events.push(...resolveStrike(s, id, directive, rng));
+        break;
+      }
+
+      case 'invade': {
+        const inv = canInvade(s, id);
+        if (!inv.ok) break;
+        s.stats.warsStarted++;
+        s.stats.actsOfViolence += 2;
+        front.atWar = true;
+        front.warMonths = 0;
+        front.warProgress = 12; // surprise weight on the first month
+        n.atWarWith.push('israel');
+        n.relationsPoints = -100;
+        n.relations = 0;
+        s.tension = clamp(s.tension + 18, 0, 100);
+        s.israel.prestige = clamp(s.israel.prestige + 2, 0, 100);
+        s.israel.usRelations = clamp(s.israel.usRelations - 12, 0, 100);
+        events.push({
+          text: expand(rng.pick(WAR_DECLARED), ctx),
+          category: 'war',
+          weight: 3,
+        });
+        break;
+      }
+
+      case 'deploy_brigade':
+        moveFromStockpile(s, id, { brigades: 1 });
+        break;
+      case 'deploy_tanks':
+        moveFromStockpile(s, id, { tanks: 200 });
+        break;
+      case 'deploy_sam':
+        moveFromStockpile(s, id, { sam: 5 });
+        break;
+      case 'deploy_air':
+        moveFromStockpile(s, id, { aircraft: 20 });
+        break;
+      case 'deploy_all':
+        moveFromStockpile(s, id, {
+          brigades: freeBrigades(s),
+          tanks: s.israel.stockpile.tanks,
+          aircraft: s.israel.stockpile.aircraft,
+          sam: s.israel.stockpile.sam,
+        });
+        break;
+      case 'withdraw_brigade':
+        returnToStockpile(s, id, false);
+        break;
+
+      case 'nuclear_strike':
+        events.push(...resolveNuclearStrike(s, id, rng));
+        break;
+    }
+  }
+
+  return events;
+}
+
+function resolveStrike(
+  s: GameState,
+  id: FrontId,
+  kind: StrategicDirective,
+  rng: Rng,
+): MilitaryEvent[] {
+  const n = s.nations[id];
+  const ctx = ctxFor(s, id, true);
+  const out: MilitaryEvent[] = [];
+
+  s.stats.strikesOrdered++;
+  s.stats.actsOfViolence++;
+
+  // Enemy air defence gets a say.
+  const defence = n.forces.sam * 0.004 + n.forces.aircraft * 0.0004;
+  const success = rng.next() > clamp(defence, 0.05, 0.6);
+
+  s.israel.stockpile.aircraft = Math.max(0, s.israel.stockpile.aircraft - rng.int(0, 4));
+  s.tension = clamp(s.tension + 8, 0, 100);
+  n.relationsPoints = clamp(n.relationsPoints - 35, -100, 100);
+
+  if (!success) {
+    s.israel.stockpile.aircraft = Math.max(0, s.israel.stockpile.aircraft - rng.int(2, 6));
+    s.israel.prestige = clamp(s.israel.prestige - 4, 0, 100);
+    out.push({ text: expand(rng.pick(STRIKE_FAILED), ctx), category: 'war', weight: 3 });
+    return out;
+  }
+
+  switch (kind) {
+    case 'strike_military':
+      n.forces.tanks = Math.max(0, n.forces.tanks - rng.int(60, 200));
+      n.forces.aircraft = Math.max(0, n.forces.aircraft - rng.int(5, 25));
+      s.israel.usRelations = clamp(s.israel.usRelations - 5, 0, 100);
+      out.push({ text: expand(rng.pick(STRIKE_MILITARY), ctx), category: 'war', weight: 2 });
+      break;
+
+    case 'strike_industrial':
+      n.stability = clamp(n.stability - rng.int(3, 8), 0, 100);
+      s.israel.usRelations = clamp(s.israel.usRelations - 8, 0, 100);
+      out.push({ text: expand(rng.pick(STRIKE_INDUSTRIAL), ctx), category: 'war', weight: 2 });
+      break;
+
+    case 'strike_civilian':
+      // Effective and indefensible.
+      n.stability = clamp(n.stability - rng.int(6, 14), 0, 100);
+      s.stats.actsOfViolence += 2;
+      s.israel.usRelations = clamp(s.israel.usRelations - 18, 0, 100);
+      s.israel.prestige = clamp(s.israel.prestige - 6, 0, 100);
+      s.tension = clamp(s.tension + 6, 0, 100);
+      out.push({ text: expand(rng.pick(STRIKE_CIVILIAN), ctx), category: 'war', weight: 3 });
+      break;
+
+    case 'strike_nuclear':
+      n.nuclearProgress = Math.max(0, n.nuclearProgress - rng.int(40, 70));
+      s.israel.usRelations = clamp(s.israel.usRelations - 10, 0, 100);
+      out.push({
+        text: expand('*s destroy @ nuclear reactor in strike', ctx),
+        category: 'war',
+        weight: 3,
+      });
+      break;
+  }
+
+  // A strike is very often the thing that starts the shooting.
+  const front = s.fronts[id];
+  if (!front.atWar && rng.chance(0.45)) {
+    front.atWar = true;
+    front.warMonths = 0;
+    n.atWarWith.push('israel');
+    s.stats.warsStarted++;
+    out.push({
+      text: expand('* strike bombing of _ starts war', ctx),
+      category: 'war',
+      weight: 3,
+    });
+  }
+
+  return out;
+}
+
+function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEvent[] {
+  const n = s.nations[id];
+  const ctx = ctxFor(s, id, true);
+  s.israel.warheads = Math.max(0, s.israel.warheads - 1);
+  s.stats.nukesUsed++;
+  s.stats.actsOfViolence += 10;
+  s.tension = clamp(s.tension + 45, 0, 100);
+  s.israel.usRelations = clamp(s.israel.usRelations - 45, 0, 100);
+  s.israel.prestige = clamp(s.israel.prestige + 10, 0, 100);
+  n.forces.brigades = Math.max(0, n.forces.brigades - 5);
+  n.forces.tanks = Math.floor(n.forces.tanks * 0.4);
+  n.stability = 0;
+
+  return [
+    {
+      text: expand(
+        rng.pick(['World is shaken as # nukes _', '# destroys & with nuclear devastat^']),
+        ctx,
+      ),
+      category: 'nuclear',
+      weight: 3,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Border war resolution
+// ---------------------------------------------------------------------------
+
+/** Total combat weight Israel has on one front. */
+export function israeliStrength(s: GameState, id: FrontId): number {
+  const d = s.fronts[id].deployed;
+  return d.brigades * 100 + d.tanks * 0.09 + d.aircraft * 0.5 + d.sam * 1.2;
+}
+
+/** Total combat weight the defender can bring to that front. */
+export function enemyStrength(s: GameState, id: FrontId): number {
+  const n = s.nations[id];
+  let base = n.forces.brigades * 78 + n.forces.tanks * 0.06 + n.forces.aircraft * 0.35;
+  base += n.forces.sam * 1.0;
+  // A regime falling apart cannot fight well.
+  base *= 0.5 + (n.stability / 100) * 0.7;
+  // Allies who have a pact with the defender pile in.
+  for (const other of Object.values(s.nations)) {
+    if (other.id === id || other.collapsed) continue;
+    if (other.pactWith.includes(n.id)) base += other.forces.brigades * 22;
+  }
+  return base;
+}
+
+export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
+  const events: MilitaryEvent[] = [];
+
+  for (const id of FRONTS) {
+    const front = s.fronts[id];
+    if (!front.atWar) continue;
+    const n = s.nations[id];
+    front.warMonths++;
+
+    // Emergency mobilisation. When the line is about to break, the generals
+    // do not wait for a directive — the uncommitted reserve goes to the front
+    // that is being overrun. It happens once per war, and only draws on
+    // forces the player had left idle.
+    if (!front.mobilised && front.warProgress < -20) {
+      front.mobilised = true;
+      const spare = freeBrigades(s);
+      const st = s.israel.stockpile;
+      const brigades = Math.min(2, spare);
+      const tanks = Math.floor(st.tanks * 0.35);
+      const aircraft = Math.floor(st.aircraft * 0.35);
+      const sam = Math.floor(st.sam * 0.35);
+      if (brigades > 0 || tanks > 0) {
+        front.deployed.brigades += brigades;
+        front.deployed.tanks += tanks;
+        front.deployed.aircraft += aircraft;
+        front.deployed.sam += sam;
+        st.tanks -= tanks;
+        st.aircraft -= aircraft;
+        st.sam -= sam;
+        events.push({
+          text: `Reserve mobilised as ${n.adjective} forces press the border`,
+          category: 'war',
+          weight: 2,
+        });
+      }
+    }
+
+    const us = israeliStrength(s, id);
+    const them = enemyStrength(s, id);
+    const ratio = us / Math.max(1, us + them);
+    // Centre on 0.5 so an even match drifts nowhere, then add friction.
+    const swing = (ratio - 0.5) * 60 + rng.int(-8, 8);
+    front.warProgress = clamp(front.warProgress + swing, -100, 100);
+
+    // Attrition on both sides, scaled by how badly it is going.
+    const ourLossRate = clamp(0.1 - front.warProgress / 900, 0.02, 0.22);
+    const theirLossRate = clamp(0.1 + front.warProgress / 900, 0.02, 0.22);
+
+    front.deployed.tanks = Math.max(0, Math.floor(front.deployed.tanks * (1 - ourLossRate)));
+    front.deployed.aircraft = Math.max(
+      0,
+      Math.floor(front.deployed.aircraft * (1 - ourLossRate * 0.5)),
+    );
+    n.forces.tanks = Math.max(0, Math.floor(n.forces.tanks * (1 - theirLossRate)));
+    n.forces.aircraft = Math.max(
+      0,
+      Math.floor(n.forces.aircraft * (1 - theirLossRate * 0.5)),
+    );
+
+    // Manpower comes out of the reserve pool.
+    s.israel.reserves = Math.max(0, s.israel.reserves - Math.round(ourLossRate * 60));
+    // A brigade can only be destroyed if one is actually standing here, or the
+    // national total would fall below what is committed elsewhere.
+    if (front.deployed.brigades > 0 && rng.chance(ourLossRate)) {
+      front.deployed.brigades--;
+      s.israel.brigades = Math.max(0, s.israel.brigades - 1);
+    }
+    if (rng.chance(theirLossRate)) {
+      n.forces.brigades = Math.max(0, n.forces.brigades - 1);
+    }
+
+    // War is unpopular at home the longer it runs and the worse it goes.
+    s.israel.popularity = clamp(
+      s.israel.popularity + (front.warProgress > 40 ? 1 : -2) - Math.floor(front.warMonths / 6),
+      0,
+      100,
+    );
+    s.tension = clamp(s.tension + 2, 0, 100);
+
+    const ctx = ctxFor(s, id, false);
+    if (front.warProgress < -25) {
+      events.push({ text: expand(rng.pick(WAR_LOSSES), ctx), category: 'war', weight: 2 });
+    } else if (front.warProgress > 35) {
+      events.push({
+        text: expand(rng.pick(WAR_GAINS), ctxFor(s, id, true)),
+        category: 'war',
+        weight: 2,
+      });
+    }
+    if (front.warMonths === 6) {
+      events.push({
+        text: expand('*-@ war enters sixth month', ctxFor(s, id, true)),
+        category: 'war',
+        weight: 1,
+      });
+    }
+
+    // Decisive outcomes.
+    if (front.warProgress >= 92) {
+      front.territoryHeld = true;
+      events.push({
+        text: expand('* army claim control of _!', ctxFor(s, id, true)),
+        category: 'war',
+        weight: 3,
+      });
+      // The defeated state's government does not survive occupation.
+      n.collapsed = true;
+      n.collapseCause = 'invasion';
+      n.stability = 0;
+      n.atWarWith = [];
+      front.atWar = false;
+      front.warMonths = 0;
+      s.israel.prestige = clamp(s.israel.prestige + 12, 0, 100);
+    } else if (front.warProgress <= -85) {
+      // The line is breaking, but a country is not lost in a single month.
+      // Three consecutive months here is what actually ends the game.
+      front.collapseMonths++;
+      events.push({
+        text: expand('@ forces move deeper into #', ctxFor(s, id, false)),
+        category: 'war',
+        weight: 3,
+      });
+      s.israel.popularity = clamp(s.israel.popularity - 12, 0, 100);
+      s.israel.prestige = clamp(s.israel.prestige - 8, 0, 100);
+    } else {
+      front.collapseMonths = 0;
+    }
+  }
+
+  return events;
+}
+
+/** Front-line commander's read on how it is going, for the Review screen. */
+export function frontReport(progress: number): string {
+  if (progress <= -70) return 'Our army is no match for the enemy.';
+  if (progress <= -45) return 'We suffered appalling losses.';
+  if (progress <= -25) return 'Our lines have been decimated.';
+  if (progress <= -10) return 'We suffered major troop losses.';
+  if (progress < 10) return 'We suffered minor troop losses.';
+  if (progress < 30) return 'The enemy has suffered slight losses.';
+  if (progress < 55) return 'Our forces have the upper hand.';
+  if (progress < 80) return 'We inflicted severe damage.';
+  return 'We are romping through enemy lines.';
+}

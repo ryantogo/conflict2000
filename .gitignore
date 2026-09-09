@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+.vite/
+tsconfig.tsbuildinfo
+
+# Verbatim material extracted from the 1990 original (manual text and the
+# executable's string table). Useful locally for matching the original's
+# voice; not ours to redistribute. tools/README.md documents the file formats
+# in our own words, so the decoders stay usable without these.
+tools/reference/
