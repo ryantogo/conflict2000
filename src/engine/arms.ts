@@ -128,8 +128,12 @@ export function resolveDeliveries(s: GameState): string[] {
     notes.push(`Delivered: ${o.quantity} x ${item.name}.`);
   }
 
+  // Loyalty decays where we could have bought and did not. A supplier who is
+  // refusing to sell is not being neglected by us, and bleeding that
+  // relationship dry would punish the same offence twice.
   for (const id of SUPPLIER_IDS) {
     const st = s.israel.suppliers[id];
+    if (st.embargoed) continue;
     st.loyalty = clamp(st.loyalty - 1, 0, 100);
   }
 

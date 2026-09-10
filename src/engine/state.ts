@@ -32,6 +32,7 @@ function createFront(id: FrontId): Front {
     mobilised: false,
     collapseMonths: 0,
     demilitarised: false,
+    demilitarisedMonths: 0,
   };
 }
 

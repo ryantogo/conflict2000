@@ -127,14 +127,19 @@ export function ForeignOffice({
             </span>
           }
         >
-          <div className="rows" style={{ marginBottom: 12 }}>
-            <Row
-              label="Their counter-intelligence"
-              value={alertLabel(n.counterIntel)}
-              tone={n.counterIntel >= 50 ? 'red' : n.counterIntel >= 30 ? 'amber' : ''}
-            />
-          </div>
-          <Bar value={n.counterIntel} tone={n.counterIntel >= 50 ? 'red' : undefined} />
+          {/* A fallen state has no security service left to read. */}
+          {!n.collapsed && (
+            <>
+              <div className="rows" style={{ marginBottom: 12 }}>
+                <Row
+                  label="Their counter-intelligence"
+                  value={alertLabel(n.counterIntel)}
+                  tone={n.counterIntel >= 50 ? 'red' : n.counterIntel >= 30 ? 'amber' : ''}
+                />
+              </div>
+              <Bar value={n.counterIntel} tone={n.counterIntel >= 50 ? 'red' : undefined} />
+            </>
+          )}
 
           <div style={{ marginTop: 14 }}>
             <Choices

@@ -89,8 +89,8 @@ export default function App() {
     },
   };
 
-  const onSummit = (decisions: Record<string, boolean>) => {
-    applySummit(game, decisions);
+  const onSummit = (decisions: Record<string, boolean>, attended: boolean) => {
+    applySummit(game, decisions, attended);
     touch();
   };
 

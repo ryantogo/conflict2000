@@ -69,6 +69,11 @@ export function extremeOpQueued(s: GameState, except?: NationId): boolean {
   return false;
 }
 
+/** "$60 M" — the price tag the nuclear programme has always shown and this never did. */
+function price(d: IntelDirective): string {
+  return ` — $${OP_FUNDS[d]} M`;
+}
+
 export function intelOptions(s: GameState, id: NationId): IntelOption[] {
   const n = s.nations[id];
   if (n.collapsed) {
@@ -78,15 +83,21 @@ export function intelOptions(s: GameState, id: NationId): IntelOption[] {
   const opts: IntelOption[] = [];
 
   if (n.oppositionStrength < 8) {
-    opts.push({ id: 'support_insurgents', label: 'Attempt to start serious anti-government group' });
+    opts.push({
+      id: 'support_insurgents',
+      label: `Attempt to start serious anti-government group${price('support_insurgents')}`,
+    });
     opts.push({ id: 'none', label: 'Make no attempt to destabilize government' });
     return opts;
   }
 
-  opts.push({ id: 'support_insurgents', label: 'Support current activities of insurgents' });
+  opts.push({
+    id: 'support_insurgents',
+    label: `Support current activities of insurgents${price('support_insurgents')}`,
+  });
   opts.push({
     id: 'disrupt_insurgents',
-    label: 'Disrupt insurgent group thereby helping government',
+    label: `Disrupt insurgent group thereby helping government${price('disrupt_insurgents')}`,
   });
 
   if (n.oppositionStrength >= EXTREME_THRESHOLD) {
@@ -95,12 +106,12 @@ export function intelOptions(s: GameState, id: NationId): IntelOption[] {
       : undefined;
     opts.push({
       id: 'assassinate',
-      label: 'Assassinate leader',
+      label: `Assassinate leader${price('assassinate')}`,
       ...(busy ? { disabledReason: busy } : {}),
     });
     opts.push({
       id: 'coup',
-      label: 'Start coup',
+      label: `Start coup${price('coup')}`,
       ...(busy ? { disabledReason: busy } : {}),
     });
   } else {
@@ -138,7 +149,12 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
       .map(([id]) => id),
   );
   for (const n of Object.values(s.nations)) {
-    if (!worked.has(n.id)) n.counterIntel = clamp(n.counterIntel - 6, 0, 100);
+    if (worked.has(n.id)) continue;
+    n.counterIntel = clamp(n.counterIntel - 6, 0, 100);
+    // Our posture is what we are doing now, not what we once did. Leaving it
+    // set marked a country for the rest of the game and quietly blocked every
+    // future attempt to improve relations with it.
+    n.israeliPosture = 'neutral';
   }
 
   /** A failed or noisy operation gets noticed, and being noticed costs. */
@@ -321,9 +337,12 @@ export function driftInternals(s: GameState, rng: Rng): void {
     n.stability = clamp(n.stability + rng.int(-1, 1), 0, 100);
 
     // A state can simply fall apart. Lebanon, per the manual, "could collapse
-    // in its own time of its own accord".
+    // in its own time of its own accord". Whether the history books call it an
+    // insurgency or simply rot depends on whether anybody was standing ready
+    // to take over — which is the one thing Israel can have arranged.
     if (n.stability <= 4 && rng.chance(0.5)) {
-      collapseGovernment(s, n.id, 'internal');
+      const cause = n.oppositionStrength >= EXTREME_THRESHOLD ? 'insurgency' : 'internal';
+      collapseGovernment(s, n.id, cause);
     }
   }
 }

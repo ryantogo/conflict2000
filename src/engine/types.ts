@@ -45,8 +45,7 @@ export type DiplomaticDirective =
   | 'sign_pact'
   | 'break_pact'
   | 'reduce'
-  | 'ceasefire'
-  | 'restore';
+  | 'ceasefire';
 
 export type IntelDirective =
   | 'support_insurgents'
@@ -201,6 +200,12 @@ export interface Front {
   collapseMonths: number;
   /** U.N. has declared this a military-free zone after a settled war. */
   demilitarised: boolean;
+  /**
+   * Months the mandate still has to run. The screens have always called this
+   * a consequence of "the recent conflict"; a zone that never lapsed quietly
+   * removed a whole front from the game in both directions, for good.
+   */
+  demilitarisedMonths: number;
 }
 
 // ---------------------------------------------------------------------------

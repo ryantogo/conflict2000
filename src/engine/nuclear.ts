@@ -31,6 +31,7 @@ export function postureReport(s: GameState): string[] {
 
   if (p === 'tested') {
     out.push('There is nothing further to demonstrate. The world is in no doubt.');
+    out.push('Further funding goes to the production line, and buys devices.');
     return out;
   }
 
@@ -64,7 +65,14 @@ export function resolveNuclear(s: GameState, rng: Rng): { text: string; weight: 
 
     if (isr.nuclearProgress >= 100) {
       const i = ORDER.indexOf(isr.nuclearPosture);
-      if (i < ORDER.length - 1) {
+      if (i >= ORDER.length - 1) {
+        // The ladder is finished, but the programme is not. There is nothing
+        // left to signal, so the money simply buys devices — which is what it
+        // was always buying underneath the posture.
+        isr.nuclearProgress = 0;
+        isr.warheads += 1;
+        events.push({ text: 'Another device leaves the Negev production line', weight: 0 });
+      } else {
         isr.nuclearPosture = ORDER[i + 1];
         isr.nuclearProgress = 0;
         isr.warheads += rng.int(1, 3);

@@ -163,13 +163,23 @@ Where it landed. Passive players run 120 games each, the strategist 80:
 | --- | --- | --- | --- | --- |
 | passive, signs everything | 0% | 57% | 42% | 2% |
 | passive, refuses everything | 0% | 0% | 0% | 100% |
-| disciplined strategist | 27% | 14% | 14% | 44% |
+| disciplined strategist | 27% | 8% | 19% | 46% |
 
 Signing at Camp David and then doing nothing survives the decade more often
 than not, and never wins. Refusing and then doing nothing loses every single
 time — not to invasion but to the Knesset, because September arrives and there
 is no answer to it. A deliberate campaign wins a bit better than one game in
-four, median 31 months, and is removed from office more often than it wins.
+four, median 25 months, and is removed from office more often than it wins.
+
+**A settled front used to be settled forever.** `endWar` raised a U.N.
+military-free zone and nothing ever lowered it again, so one negotiated
+ceasefire removed a border from the game permanently, in both directions —
+while the screens went on calling it a consequence of "the recent conflict".
+The mandate now runs for three years and then lapses, with a headline when it
+does. The strategist feels this and nobody else does: victory is unchanged at
+27%, but coasting to the ten-year mark on the strength of an old ceasefire no
+longer works, so *survived* falls from 14% to 8% and those games are invaded
+instead.
 
 Nobody wins by accident, and the safest play is not the winning play. That gap
 is the game.

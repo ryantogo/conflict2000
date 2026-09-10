@@ -11,6 +11,7 @@ import type { Forces, Front, FrontId, GameState, NationId, StrategicDirective } 
 import { FRONTS, airUnits } from './types';
 import { clamp } from './ladders';
 import { canInvade } from './diplomacy';
+import { collapseGovernment } from './intelligence';
 import { freeBrigades } from './state';
 import type { Rng } from './rng';
 import {
@@ -633,13 +634,10 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
         category: 'war',
         weight: 3,
       });
-      // The defeated state's government does not survive occupation.
-      n.collapsed = true;
-      n.collapseCause = 'invasion';
-      n.stability = 0;
-      n.atWarWith = [];
-      front.atWar = false;
-      front.warMonths = 0;
+      // The defeated state's government does not survive occupation. This is
+      // the same event as a coup or an assassination succeeding, so it goes
+      // through the same door — an inlined copy here used to drift out of step.
+      collapseGovernment(s, id, 'invasion');
       s.israel.prestige = clamp(s.israel.prestige + 12, 0, 100);
     } else if (front.warProgress <= -85) {
       // The line is breaking, but a country is not lost in a single month.

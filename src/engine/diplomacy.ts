@@ -9,6 +9,7 @@
  */
 
 import type { DiplomaticDirective, GameState, NationId } from './types';
+import { FRONTS } from './types';
 import { clamp, pointsToRelations } from './ladders';
 import type { Rng } from './rng';
 
@@ -171,12 +172,6 @@ export function resolveDiplomacy(s: GameState, rng: Rng): string[] {
         break;
       }
 
-      case 'restore': {
-        n.relationsPoints = clamp(n.relationsPoints + rng.int(4, 9), -100, 100);
-        notes.push(`We are trying to restore friendly relations with ${n.name}.`);
-        break;
-      }
-
       case 'maintain':
         break;
     }
@@ -200,6 +195,7 @@ export function endWar(s: GameState, id: NationId, notes: string[]): void {
   front.warMonths = 0;
   front.warProgress = 0;
   front.demilitarised = true;
+  front.demilitarisedMonths = DEMILITARISED_MONTHS;
   n.atWarWith = n.atWarWith.filter((w) => w !== 'israel');
   // A ceasefire is not a friendship, but it reopens the channel.
   n.relationsPoints = clamp(n.relationsPoints + 15, -100, 100);
@@ -211,6 +207,33 @@ export function endWar(s: GameState, id: NationId, notes: string[]): void {
       `total withdrawal of combat forces. Any territory gains made by either ` +
       `side may be kept for the present time.`,
   );
+}
+
+/** How long a U.N. military-free zone stands before the mandate runs out. */
+export const DEMILITARISED_MONTHS = 36;
+
+export interface MandateEvent {
+  text: string;
+  category: 'diplomacy';
+  weight: number;
+}
+
+/** Run down the U.N. mandates, and report any that lapse this month. */
+export function expireMandates(s: GameState): MandateEvent[] {
+  const out: MandateEvent[] = [];
+  for (const id of FRONTS) {
+    const front = s.fronts[id];
+    if (!front.demilitarised) continue;
+    front.demilitarisedMonths = Math.max(0, front.demilitarisedMonths - 1);
+    if (front.demilitarisedMonths > 0) continue;
+    front.demilitarised = false;
+    out.push({
+      text: `U.N. mandate on the ${s.nations[id].adjective} border expires`,
+      category: 'diplomacy',
+      weight: 1,
+    });
+  }
+  return out;
 }
 
 /** Can Israel plausibly invade this nation? Good relations forbid it. */

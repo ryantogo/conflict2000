@@ -39,7 +39,7 @@ export function Summit({
   onDecide,
 }: {
   s: GameState;
-  onDecide: (decisions: Record<string, boolean>) => void;
+  onDecide: (decisions: Record<string, boolean>, attended: boolean) => void;
 }) {
   const proposals = summitProposals(s);
   const [decisions, setDecisions] = useState<Record<string, boolean>>({});
@@ -81,7 +81,7 @@ export function Summit({
             noted in every capital that matters.
           </p>
           <div className="btn-row end">
-            <button className="btn primary" onClick={() => onDecide({})}>
+            <button className="btn primary" onClick={() => onDecide({}, false)}>
               Continue
             </button>
           </div>
@@ -99,7 +99,7 @@ export function Summit({
             table that required an Israeli signature.
           </p>
           <div className="btn-row end">
-            <button className="btn primary" onClick={() => onDecide({})}>
+            <button className="btn primary" onClick={() => onDecide({}, true)}>
               Continue
             </button>
           </div>
@@ -135,7 +135,7 @@ export function Summit({
       ))}
 
       <div className="btn-row end">
-        <button className="btn primary" disabled={!allAnswered} onClick={() => onDecide(decisions)}>
+        <button className="btn primary" disabled={!allAnswered} onClick={() => onDecide(decisions, true)}>
           Conclude summit →
         </button>
       </div>

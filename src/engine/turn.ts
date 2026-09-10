@@ -19,7 +19,7 @@ import {
 } from './ladders';
 import { Rng } from './rng';
 import { emptyDirectives, freeBrigades } from './state';
-import { resolveDiplomacy } from './diplomacy';
+import { endWar, expireMandates, resolveDiplomacy } from './diplomacy';
 import { driftInternals, resolveIntelligence } from './intelligence';
 import { resolveCombat, resolveStrategic } from './military';
 import { resolveDeliveries, updateEmbargoes } from './arms';
@@ -83,6 +83,10 @@ export function resolveTurn(s: GameState): GameState {
 
   // 4. Fight.
   events.push(...resolveCombat(s, rng));
+
+  // U.N. mandates run down after the shooting, so a zone that lapses this
+  // month is not also fought over in the same month.
+  events.push(...expireMandates(s));
 
   // 5. Consequences.
   push(
@@ -187,8 +191,12 @@ function updateMeters(s: GameState, rng: Rng): void {
   if (freeBrigades(s) === 0) pop -= 1; // border communities feel exposed
   isr.popularity = clamp(pop + rng.int(-1, 1), 0, 100);
 
-  // Monthly budget tops the war chest back up.
-  isr.funds = Math.min(isr.funds + isr.defenceBudget, isr.defenceBudget * 4);
+  // The monthly budget tops the war chest back up, but never past four months'
+  // worth. Money already banked above that line — an American aid package,
+  // say — is left alone rather than confiscated; it simply attracts no more.
+  if (isr.funds < isr.defenceBudget * 4) {
+    isr.funds = Math.min(isr.funds + isr.defenceBudget, isr.defenceBudget * 4);
+  }
 
   reconcileBrigades(s);
 }
@@ -451,23 +459,41 @@ export function summitProposals(s: GameState): SummitProposal[] {
 export function applySummit(
   s: GameState,
   decisions: Record<string, boolean>,
+  /**
+   * Whether Israel turned up. An empty `decisions` record from a delegation
+   * that attended and found nothing to sign is not the same act as an empty
+   * chair, and the second one used to be free.
+   */
+  attended = true,
 ): string[] {
   const notes: string[] = [];
+
+  if (!attended) {
+    // The absence is noted in every capital that matters — which is what the
+    // screen has always told the player, without the game ever meaning it.
+    s.israel.usRelations = clamp(s.israel.usRelations - 12, 0, 100);
+    s.israel.prestige = clamp(s.israel.prestige - 5, 0, 100);
+    s.tension = clamp(s.tension + 5, 0, 100);
+    // Refusing to be in the room is at least as final as refusing the terms.
+    if (s.year === 2000 && !s.firedEvents.includes('camp-david-refused')) {
+      s.firedEvents.push('camp-david-refused');
+    }
+    notes.push('Israel did not attend the summit. The chair stayed empty.');
+    for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} - ${n}`);
+    s.phase = 'planning';
+    return notes;
+  }
 
   for (const [id, accepted] of Object.entries(decisions)) {
     if (id.startsWith('ceasefire:')) {
       const front = id.split(':')[1] as FrontId;
       if (accepted) {
-        const f = s.fronts[front];
-        const n = s.nations[front];
-        f.atWar = false;
-        f.warMonths = 0;
-        f.warProgress = 0;
-        f.demilitarised = true;
-        n.atWarWith = n.atWarWith.filter((w) => w !== 'israel');
-        s.tension = clamp(s.tension - 12, 0, 100);
+        // One door out of a war, whether it is brokered here or bilaterally.
+        // This path used to duplicate `endWar` and quietly omit the goodwill.
+        endWar(s, front, notes);
+        s.tension = clamp(s.tension - 4, 0, 100);
         s.israel.usRelations = clamp(s.israel.usRelations + 8, 0, 100);
-        notes.push(`The ${n.name} war has been settled amicably by both sides.`);
+        notes.push(`The ${s.nations[front].name} war has been settled amicably by both sides.`);
       } else {
         s.israel.usRelations = clamp(s.israel.usRelations - 10, 0, 100);
         s.israel.prestige = clamp(s.israel.prestige - 3, 0, 100);
