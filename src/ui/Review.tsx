@@ -1,25 +1,23 @@
 import type { GameState } from '../engine';
-import { FRONTS, freeBrigades, frontActivityLabel, frontReport } from '../engine';
+import {
+  FRONTS,
+  countOf,
+  emptyFleet,
+  freeBrigades,
+  frontActivityLabel,
+  frontReport,
+  mergeInto,
+} from '../engine';
 import { Panel, Row, WarBar } from './bits';
 
 export function Review({ s }: { s: GameState }) {
   const isr = s.israel;
 
   // What is standing on the borders, added up across all four fronts.
-  const forward = FRONTS.reduce(
-    (a, id) => {
-      const d = s.fronts[id].deployed;
-      return {
-        brigades: a.brigades + d.brigades,
-        tanks: a.tanks + d.tanks,
-        aircraft: a.aircraft + d.aircraft,
-        helicopters: a.helicopters + d.helicopters,
-        awacs: a.awacs + d.awacs,
-        sam: a.sam + d.sam,
-      };
-    },
-    { brigades: 0, tanks: 0, aircraft: 0, helicopters: 0, awacs: 0, sam: 0 },
-  );
+  const forwardBrigades = FRONTS.reduce((a, id) => a + s.fronts[id].deployed.brigades, 0);
+  const forward = emptyFleet();
+  for (const id of FRONTS) mergeInto(forward, s.fronts[id].deployed.equipment);
+  const stock = isr.stockpile.equipment;
 
   return (
     <div className="grid2">
@@ -27,14 +25,17 @@ export function Review({ s }: { s: GameState }) {
         <div className="rows">
           <Row label="Brigades free" value={`${freeBrigades(s)} of ${isr.brigades}`} />
           <Row label="Reserves" value={`${isr.reserves} thousand`} tone={isr.reserves < 100 ? 'red' : ''} />
-          <Row label="Tanks in reserve" value={isr.stockpile.tanks.toLocaleString()} />
-          <Row label="Combat aircraft in reserve" value={isr.stockpile.aircraft.toLocaleString()} />
+          <Row label="Tanks in reserve" value={countOf(stock, 'tank').toLocaleString()} />
+          <Row
+            label="Combat aircraft in reserve"
+            value={countOf(stock, 'aircraft').toLocaleString()}
+          />
           <Row
             label="Attack helicopters in reserve"
-            value={isr.stockpile.helicopters.toLocaleString()}
+            value={countOf(stock, 'helicopter').toLocaleString()}
           />
-          <Row label="Early warning aircraft" value={isr.stockpile.awacs} />
-          <Row label="SAM batteries in reserve" value={isr.stockpile.sam} />
+          <Row label="Early warning aircraft" value={countOf(stock, 'surveillance')} />
+          <Row label="SAM batteries in reserve" value={countOf(stock, 'sam')} />
           <Row label="Nuclear devices" value={isr.warheads} tone="amber" />
         </div>
 
@@ -42,12 +43,18 @@ export function Review({ s }: { s: GameState }) {
           Committed to the borders
         </div>
         <div className="rows">
-          <Row label="Brigades deployed" value={forward.brigades} />
-          <Row label="Tanks deployed" value={forward.tanks.toLocaleString()} />
-          <Row label="Combat aircraft on station" value={forward.aircraft.toLocaleString()} />
-          <Row label="Attack helicopters on station" value={forward.helicopters.toLocaleString()} />
-          <Row label="Early warning aircraft on station" value={forward.awacs} />
-          <Row label="SAM batteries deployed" value={forward.sam} />
+          <Row label="Brigades deployed" value={forwardBrigades} />
+          <Row label="Tanks deployed" value={countOf(forward, 'tank').toLocaleString()} />
+          <Row
+            label="Combat aircraft on station"
+            value={countOf(forward, 'aircraft').toLocaleString()}
+          />
+          <Row
+            label="Attack helicopters on station"
+            value={countOf(forward, 'helicopter').toLocaleString()}
+          />
+          <Row label="Early warning aircraft on station" value={countOf(forward, 'surveillance')} />
+          <Row label="SAM batteries deployed" value={countOf(forward, 'sam')} />
         </div>
 
         <div className="kicker" style={{ marginTop: 18 }}>
@@ -72,9 +79,12 @@ export function Review({ s }: { s: GameState }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                   <strong>{n.name}</strong>
                   <span className="mono small faint">
-                    {f.deployed.brigades} bde · {f.deployed.tanks.toLocaleString()} tk ·{' '}
-                    {f.deployed.aircraft} ac · {f.deployed.helicopters} hel ·{' '}
-                    {f.deployed.awacs} awc · {f.deployed.sam} sam
+                    {f.deployed.brigades} bde ·{' '}
+                    {countOf(f.deployed.equipment, 'tank').toLocaleString()} tk ·{' '}
+                    {countOf(f.deployed.equipment, 'aircraft')} ac ·{' '}
+                    {countOf(f.deployed.equipment, 'helicopter')} hel ·{' '}
+                    {countOf(f.deployed.equipment, 'surveillance')} awc ·{' '}
+                    {countOf(f.deployed.equipment, 'sam')} sam
                   </span>
                 </div>
                 <div className="small dim" style={{ marginBottom: 6 }}>

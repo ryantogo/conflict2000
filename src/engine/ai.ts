@@ -11,6 +11,7 @@ import type { GameState, Nation, NationId } from './types';
 import { NATION_IDS } from './types';
 import { clamp, pointsToRelations } from './ladders';
 import { collapseGovernment } from './intelligence';
+import { attrite, countOf } from './fleet';
 import type { Rng } from './rng';
 import {
   COLLAPSE,
@@ -145,15 +146,17 @@ export function runAi(s: GameState, rng: Rng): AiEvent[] {
       const nb = s.nations[b];
       if (nb.collapsed) continue;
 
-      const sa = na.forces.brigades * 100 + na.forces.tanks * 0.05 + na.stability;
-      const sb = nb.forces.brigades * 100 + nb.forces.tanks * 0.05 + nb.stability;
+      const sa =
+        na.forces.brigades * 100 + countOf(na.forces.equipment, 'tank') * 0.05 + na.stability;
+      const sb =
+        nb.forces.brigades * 100 + countOf(nb.forces.equipment, 'tank') * 0.05 + nb.stability;
       const attackerWins = rng.next() < sa / (sa + sb);
       const loser = attackerWins ? nb : na;
       const winner = attackerWins ? na : nb;
 
-      loser.forces.tanks = Math.floor(loser.forces.tanks * 0.9);
+      attrite(loser.forces.equipment, 0.1, 'tank');
       loser.stability = clamp(loser.stability - rng.int(3, 9), 0, 100);
-      winner.forces.tanks = Math.floor(winner.forces.tanks * 0.96);
+      attrite(winner.forces.equipment, 0.04, 'tank');
 
       // Someone eventually breaks.
       if (loser.stability <= 12 && rng.chance(0.35)) {

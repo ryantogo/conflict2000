@@ -105,26 +105,20 @@ export interface PurchaseOrder {
 // Nations
 // ---------------------------------------------------------------------------
 
-export interface Forces {
-  brigades: number;
-  tanks: number;
-  /** Fixed-wing combat aircraft. */
-  aircraft: number;
-  /**
-   * Attack helicopters. Split out of `aircraft` because the player buys them
-   * as their own line in the catalogue and expects to see them counted.
-   * Arab air power stays a single aggregate in `aircraft`, so these are 0
-   * for every nation.
-   */
-  helicopters: number;
-  /** Airborne early warning and surveillance craft. Same reasoning. */
-  awacs: number;
-  sam: number;
-}
+/**
+ * A named-item inventory: how many of each equipment id are held here.
+ *
+ * Everything material is one of these. A count of "tanks" is a question you
+ * ask a fleet, not a field it stores, because which tanks they are is the
+ * whole point.
+ */
+export type Fleet = Record<string, number>;
 
-/** Every air arm Israel tracks, as one number. All weigh the same in combat. */
-export function airUnits(f: Forces): number {
-  return f.aircraft + f.helicopters + f.awacs;
+export interface Forces {
+  /** Manpower formations. Not equipment, and not interchangeable with it. */
+  brigades: number;
+  /** Everything with a serial number. */
+  equipment: Fleet;
 }
 
 export interface Nation {

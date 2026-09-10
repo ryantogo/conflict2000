@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FrontId, GameState, StrategicDirective } from '../engine';
 import {
   FRONTS,
+  countOf,
   enemyStrength,
   freeBrigades,
   frontActivityLabel,
@@ -76,11 +77,23 @@ export function Strategic({
           )}
           <div className="rows">
             <Row label="Brigades deployed" value={front.deployed.brigades} />
-            <Row label="Tanks deployed" value={front.deployed.tanks.toLocaleString()} />
-            <Row label="Combat aircraft on station" value={front.deployed.aircraft} />
-            <Row label="Attack helicopters on station" value={front.deployed.helicopters} />
-            <Row label="Early warning aircraft on station" value={front.deployed.awacs} />
-            <Row label="SAM batteries" value={front.deployed.sam} />
+            <Row
+              label="Tanks deployed"
+              value={countOf(front.deployed.equipment, 'tank').toLocaleString()}
+            />
+            <Row
+              label="Combat aircraft on station"
+              value={countOf(front.deployed.equipment, 'aircraft')}
+            />
+            <Row
+              label="Attack helicopters on station"
+              value={countOf(front.deployed.equipment, 'helicopter')}
+            />
+            <Row
+              label="Early warning aircraft on station"
+              value={countOf(front.deployed.equipment, 'surveillance')}
+            />
+            <Row label="SAM batteries" value={countOf(front.deployed.equipment, 'sam')} />
             <Row
               label="Our combat weight"
               value={Math.round(israeliStrength(s, selected)).toLocaleString()}

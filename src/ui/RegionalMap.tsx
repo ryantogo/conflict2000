@@ -1,6 +1,6 @@
 import type { FrontId, GameState, NationId } from '../engine';
 import type { ViewId } from '../data/geography';
-import { FRONTS, relationsLabel, stabilityLabel, unrestLabel } from '../engine';
+import { FRONTS, countOf, relationsLabel, stabilityLabel, unrestLabel } from '../engine';
 import {
   BACKDROP_LABELS,
   BACKDROP_RINGS,
@@ -276,7 +276,11 @@ function labelFor(s: GameState, id: NationId | 'israel', mode: MapMode): string 
   const bits = [n.name];
   if (mode === 'relations') bits.push(`relations ${relationsLabel(n.relations)}`);
   else if (mode === 'stability') bits.push(stabilityLabel(n.stability));
-  else bits.push(`${n.forces.brigades} brigades, ${n.forces.tanks.toLocaleString()} tanks`);
+  else
+    bits.push(
+      `${n.forces.brigades} brigades, ` +
+        `${countOf(n.forces.equipment, 'tank').toLocaleString()} tanks`,
+    );
   if (n.atWarWith.includes('israel')) bits.push('AT WAR WITH ISRAEL');
   return bits.join(' — ');
 }

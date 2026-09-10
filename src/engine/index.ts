@@ -1,4 +1,16 @@
 export * from './types';
+export {
+  airCount,
+  airPower,
+  cloneFleet,
+  countOf,
+  emptyFleet,
+  mergeInto,
+  powerOf,
+  totalUnits,
+} from './fleet';
+export type { ArmsCategory, Equipment } from '../data/equipment';
+export { equipmentById } from '../data/equipment';
 export * from './ladders';
 export { Rng } from './rng';
 export { createGame, emptyDirectives, freeBrigades, activeWars } from './state';

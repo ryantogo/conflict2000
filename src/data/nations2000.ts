@@ -8,6 +8,7 @@
  */
 
 import type { Nation, NationId } from '../engine/types';
+import { orderOfBattle } from './inventory2000';
 
 type NationSeed = Omit<Nation, 'relationsPoints' | 'baseStability' | 'counterIntel'>;
 
@@ -26,7 +27,10 @@ const seeds: NationSeed[] = [
     oppositionStrength: 22,
     israeliPosture: 'neutral',
     // Roughly twice the Israeli order of battle, as in the original manual.
-    forces: { brigades: 14, tanks: 3500, aircraft: 570, helicopters: 0, awacs: 0, sam: 90 },
+    forces: {
+      brigades: 14,
+      equipment: orderOfBattle({ tanks: 3500, aircraft: 570, sam: 90 }),
+    },
     interArab: { jordan: 6, syria: 4, iraq: 2, libya: 1, lebanon: 4, iran: 3 },
     atWarWith: [],
     pactWith: [],
@@ -49,7 +53,10 @@ const seeds: NationSeed[] = [
     oppositionGroup: 'Muslim Brotherhood',
     oppositionStrength: 30,
     israeliPosture: 'neutral',
-    forces: { brigades: 10, tanks: 4500, aircraft: 480, helicopters: 0, awacs: 0, sam: 130 },
+    forces: {
+      brigades: 10,
+      equipment: orderOfBattle({ tanks: 4500, aircraft: 480, sam: 130 }),
+    },
     interArab: { egypt: 4, jordan: 3, iraq: 1, lebanon: 8, libya: 4, iran: 6 },
     atWarWith: [],
     pactWith: ['lebanon'],
@@ -70,7 +77,10 @@ const seeds: NationSeed[] = [
     oppositionGroup: 'Islamic Action Front',
     oppositionStrength: 26,
     israeliPosture: 'neutral',
-    forces: { brigades: 5, tanks: 1200, aircraft: 100, helicopters: 0, awacs: 0, sam: 30 },
+    forces: {
+      brigades: 5,
+      equipment: orderOfBattle({ tanks: 1200, aircraft: 100, sam: 30 }),
+    },
     interArab: { egypt: 6, syria: 3, iraq: 5, lebanon: 4, libya: 3, iran: 2 },
     atWarWith: [],
     pactWith: [],
@@ -92,7 +102,10 @@ const seeds: NationSeed[] = [
     oppositionGroup: 'Hezbollah',
     oppositionStrength: 55,
     israeliPosture: 'neutral',
-    forces: { brigades: 3, tanks: 300, aircraft: 0, helicopters: 0, awacs: 0, sam: 10 },
+    forces: {
+      brigades: 3,
+      equipment: orderOfBattle({ tanks: 300, sam: 10 }),
+    },
     interArab: { syria: 8, egypt: 4, jordan: 4, iraq: 2, libya: 2, iran: 7 },
     atWarWith: [],
     pactWith: ['syria'],
@@ -113,7 +126,10 @@ const seeds: NationSeed[] = [
     oppositionGroup: 'Kurdish Democratic Party',
     oppositionStrength: 34,
     israeliPosture: 'neutral',
-    forces: { brigades: 12, tanks: 2200, aircraft: 300, helicopters: 0, awacs: 0, sam: 70 },
+    forces: {
+      brigades: 12,
+      equipment: orderOfBattle({ tanks: 2200, aircraft: 300, sam: 70 }),
+    },
     interArab: { iran: 1, jordan: 5, syria: 1, egypt: 2, libya: 4, lebanon: 2 },
     atWarWith: [],
     pactWith: [],
@@ -135,7 +151,10 @@ const seeds: NationSeed[] = [
     oppositionGroup: 'Student Reform Movement',
     oppositionStrength: 38,
     israeliPosture: 'neutral',
-    forces: { brigades: 16, tanks: 1500, aircraft: 300, helicopters: 0, awacs: 0, sam: 60 },
+    forces: {
+      brigades: 16,
+      equipment: orderOfBattle({ tanks: 1500, aircraft: 300, sam: 60 }),
+    },
     interArab: { iraq: 1, syria: 6, lebanon: 7, egypt: 3, jordan: 2, libya: 4 },
     atWarWith: [],
     pactWith: ['syria'],
@@ -155,7 +174,10 @@ const seeds: NationSeed[] = [
     oppositionGroup: 'Libyan Islamic Fighting Group',
     oppositionStrength: 32,
     israeliPosture: 'neutral',
-    forces: { brigades: 4, tanks: 2200, aircraft: 400, helicopters: 0, awacs: 0, sam: 40 },
+    forces: {
+      brigades: 4,
+      equipment: orderOfBattle({ tanks: 2200, aircraft: 400, sam: 40 }),
+    },
     interArab: { egypt: 1, syria: 4, iraq: 4, jordan: 3, lebanon: 2, iran: 4 },
     atWarWith: [],
     pactWith: [],
@@ -174,7 +196,7 @@ export function createNations(): Record<NationId, Nation> {
       // Deep-copy every mutable field. A shallow spread would share these
       // objects with the module-level seeds, and one game's wars would then
       // leak into the next.
-      forces: { ...s.forces },
+      forces: { brigades: s.forces.brigades, equipment: { ...s.forces.equipment } },
       interArab: { ...s.interArab },
       atWarWith: [...s.atWarWith],
       pactWith: [...s.pactWith],

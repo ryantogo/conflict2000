@@ -10,7 +10,8 @@
 import type { GameState, PurchaseOrder, SupplierId } from './types';
 import { SUPPLIER_IDS } from './types';
 import { clamp } from './ladders';
-import { CATALOGUE, catalogueFor, itemById, poolFor } from '../data/arms2000';
+import { CATALOGUE, catalogueFor, itemById } from '../data/arms2000';
+import { addUnits, countOf } from './fleet';
 import type { ArmsItem } from '../data/arms2000';
 
 export interface DealerGreeting {
@@ -124,7 +125,8 @@ export function resolveDeliveries(s: GameState): string[] {
   for (const o of arrived) {
     const item = itemById(o.itemId);
     if (!item) continue;
-    s.israel.stockpile[poolFor(item.category)] += o.quantity;
+    // A delivery lands as the type it actually is, not as a generic pool.
+    addUnits(s.israel.stockpile.equipment, item.id, o.quantity);
     notes.push(`Delivered: ${o.quantity} x ${item.name}.`);
   }
 
@@ -168,7 +170,7 @@ export function updateEmbargoes(s: GameState): string[] {
 
 /** The procurement office's unsolicited advice, as in the original. */
 export function procurementAdvice(s: GameState): string {
-  const st = s.israel.stockpile;
+  const st = s.israel.stockpile.equipment;
   const atWar = Object.values(s.fronts).some((f) => f.atWar);
 
   const prefix = atWar
@@ -177,12 +179,15 @@ export function procurementAdvice(s: GameState): string {
       ? 'Due to the possibility of conflict in the near future,'
       : 'For a more balanced attack force,';
 
-  if (st.aircraft < 200) return `${prefix} we may require some Strike Aircraft.`;
-  if (st.sam < 60) return `${prefix} the purchase of more SAM systems may be prudent.`;
-  if (st.tanks < 2000) return `${prefix} we should obtain more Battlefield Systems.`;
-  if (st.helicopters < 60)
+  if (countOf(st, 'aircraft') < 200) return `${prefix} we may require some Strike Aircraft.`;
+  if (countOf(st, 'sam') < 60)
+    return `${prefix} the purchase of more SAM systems may be prudent.`;
+  if (countOf(st, 'tank') < 2000)
+    return `${prefix} we should obtain more Battlefield Systems.`;
+  if (countOf(st, 'helicopter') < 60)
     return `${prefix} the ground forces want more attack helicopters over them.`;
-  if (st.awacs < 3) return 'We advise you to purchase an early warning surveillance craft.';
+  if (countOf(st, 'surveillance') < 3)
+    return 'We advise you to purchase an early warning surveillance craft.';
   return 'The order of battle is balanced. We have nothing pressing to ask for.';
 }
 

@@ -9,8 +9,9 @@
  */
 
 import type { SupplierId } from '../engine/types';
+import type { ArmsCategory } from './equipment';
 
-export type ArmsCategory = 'tank' | 'aircraft' | 'sam' | 'helicopter' | 'surveillance';
+export type { ArmsCategory };
 
 export interface ArmsItem {
   id: string;
@@ -286,22 +287,4 @@ export function catalogueFor(supplier: SupplierId, loyalty: number): ArmsItem[] 
 
 export function itemById(id: string): ArmsItem | undefined {
   return CATALOGUE.find((i) => i.id === id);
-}
-
-/** Which force pool an item lands in when it is delivered. */
-export function poolFor(
-  cat: ArmsCategory,
-): 'tanks' | 'aircraft' | 'helicopters' | 'awacs' | 'sam' {
-  switch (cat) {
-    case 'tank':
-      return 'tanks';
-    case 'sam':
-      return 'sam';
-    case 'aircraft':
-      return 'aircraft';
-    case 'helicopter':
-      return 'helicopters';
-    case 'surveillance':
-      return 'awacs';
-  }
 }

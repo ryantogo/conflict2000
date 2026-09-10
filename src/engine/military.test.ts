@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from './rng';
 import {
-  airUnits,
+  airCount,
   applyBudget,
   applySummit,
   createGame,
@@ -13,6 +13,7 @@ import {
 } from './index';
 import type { GameState } from './index';
 import { resolveStrategic } from './military';
+import { countOf } from './fleet';
 
 /** Put a full column on the Lebanese border and hand it back. */
 function massOnLebanon(g: GameState): void {
@@ -48,9 +49,9 @@ describe('getting the army home again', () => {
 
     const dep = g.fronts.lebanon.deployed;
     expect(dep.brigades).toBe(0);
-    expect(dep.tanks).toBe(0);
-    expect(airUnits(dep)).toBe(0);
-    expect(dep.sam).toBe(0);
+    expect(countOf(dep.equipment, 'tank')).toBe(0);
+    expect(airCount(dep.equipment)).toBe(0);
+    expect(countOf(dep.equipment, 'sam')).toBe(0);
     // Nothing may be lost in the paperwork.
     expect(g.israel.stockpile).toEqual(before);
   });
@@ -81,13 +82,13 @@ describe('the air arm', () => {
   it('counts helicopters and early warning craft in their own pools', () => {
     const g = createGame(9);
     startGame(g);
-    const st = g.israel.stockpile;
-    expect(st.helicopters).toBeGreaterThan(0);
-    expect(st.awacs).toBeGreaterThan(0);
+    const st = g.israel.stockpile.equipment;
+    expect(countOf(st, 'helicopter')).toBeGreaterThan(0);
+    expect(countOf(st, 'surveillance')).toBeGreaterThan(0);
 
-    const heli = st.helicopters;
-    const awacs = st.awacs;
-    const jets = st.aircraft;
+    const heli = countOf(st, 'helicopter');
+    const awacs = countOf(st, 'surveillance');
+    const jets = countOf(st, 'aircraft');
 
     g.israel.funds = 5000;
     g.israel.suppliers.usa.loyalty = 100;
@@ -104,10 +105,14 @@ describe('the air arm', () => {
       else resolveTurn(g);
     }
 
-    expect(g.israel.stockpile.helicopters).toBe(heli + 2);
-    expect(g.israel.stockpile.awacs).toBe(awacs + 1);
+    const after = g.israel.stockpile.equipment;
+    expect(countOf(after, 'helicopter')).toBe(heli + 2);
+    expect(countOf(after, 'surveillance')).toBe(awacs + 1);
     // And they must not have been double counted as strike aircraft.
-    expect(g.israel.stockpile.aircraft).toBe(jets);
+    expect(countOf(after, 'aircraft')).toBe(jets);
+    // They landed as the types actually ordered, not as generic airframes.
+    expect(after.apache_d).toBe(2);
+    expect(after.hawkeye).toBe(1);
   });
 
   it('sends helicopters and early warning craft forward with the rest', () => {
@@ -115,7 +120,7 @@ describe('the air arm', () => {
     startGame(g);
     massOnLebanon(g);
     const dep = g.fronts.lebanon.deployed;
-    expect(dep.helicopters).toBeGreaterThan(0);
-    expect(dep.awacs).toBeGreaterThan(0);
+    expect(countOf(dep.equipment, 'helicopter')).toBeGreaterThan(0);
+    expect(countOf(dep.equipment, 'surveillance')).toBeGreaterThan(0);
   });
 });

@@ -1,0 +1,181 @@
+/**
+ * Operations on named-item inventories.
+ *
+ * The engine never reaches into a `Fleet` directly. It asks how many of a
+ * category are present, what they are worth, and moves slices of them between
+ * a stockpile and a border. Slices are drawn proportionally: an order to send
+ * four hundred tanks forward sends a representative cut of the motor pool, not
+ * the four hundred best, because a quartermaster is not a min-maxer.
+ */
+
+import type { Fleet } from './types';
+import type { ArmsCategory } from '../data/equipment';
+import { AIR_CATEGORIES, REFERENCE_POWER, equipmentById } from '../data/equipment';
+
+export function emptyFleet(): Fleet {
+  return {};
+}
+
+export function cloneFleet(f: Fleet): Fleet {
+  return { ...f };
+}
+
+function inCategory(id: string, cats: ArmsCategory[]): boolean {
+  const e = equipmentById(id);
+  return !!e && cats.includes(e.category);
+}
+
+/** How many units of these categories are held. */
+export function countOf(f: Fleet, ...cats: ArmsCategory[]): number {
+  let n = 0;
+  for (const [id, held] of Object.entries(f)) {
+    if (held > 0 && inCategory(id, cats)) n += held;
+  }
+  return n;
+}
+
+/** The summed combat power of these categories. */
+export function powerOf(f: Fleet, ...cats: ArmsCategory[]): number {
+  let p = 0;
+  for (const [id, held] of Object.entries(f)) {
+    if (held <= 0) continue;
+    const e = equipmentById(id);
+    if (e && cats.includes(e.category)) p += held * e.power;
+  }
+  return p;
+}
+
+/** Every air arm at once — the question `airUnits` used to answer. */
+export function airCount(f: Fleet): number {
+  return countOf(f, ...AIR_CATEGORIES);
+}
+
+export function airPower(f: Fleet): number {
+  return powerOf(f, ...AIR_CATEGORIES);
+}
+
+/** Total units of anything. */
+export function totalUnits(f: Fleet): number {
+  let n = 0;
+  for (const held of Object.values(f)) if (held > 0) n += held;
+  return n;
+}
+
+export function addUnits(f: Fleet, id: string, n: number): void {
+  if (n <= 0) return;
+  f[id] = (f[id] ?? 0) + n;
+}
+
+export function mergeInto(dst: Fleet, src: Fleet): void {
+  for (const [id, n] of Object.entries(src)) addUnits(dst, id, n);
+}
+
+/**
+ * Remove up to `want` units of these categories, spread across what is held,
+ * and return what was taken. Largest holdings give up the most; the remainder
+ * is walked off one at a time so the count comes out exact.
+ */
+export function drawFrom(f: Fleet, want: number, ...cats: ArmsCategory[]): Fleet {
+  const taken: Fleet = {};
+  if (want <= 0) return taken;
+
+  const held = Object.entries(f).filter(([id, n]) => n > 0 && inCategory(id, cats));
+  const available = held.reduce((a, [, n]) => a + n, 0);
+  if (available === 0) return taken;
+
+  const target = Math.min(want, available);
+  let drawn = 0;
+  for (const [id, n] of held) {
+    const share = Math.floor((n / available) * target);
+    if (share > 0) {
+      taken[id] = share;
+      f[id] = n - share;
+      drawn += share;
+    }
+  }
+
+  // Rounding leaves a few behind. Walk the remainder off the deepest stacks.
+  for (const [id] of [...held].sort((a, b) => (f[b[0]] ?? 0) - (f[a[0]] ?? 0))) {
+    if (drawn >= target) break;
+    if ((f[id] ?? 0) <= 0) continue;
+    f[id] -= 1;
+    taken[id] = (taken[id] ?? 0) + 1;
+    drawn++;
+  }
+
+  compact(f);
+  return taken;
+}
+
+/** Remove a fraction of these categories, rounded down, and return it. */
+export function drawFraction(f: Fleet, frac: number, ...cats: ArmsCategory[]): Fleet {
+  return drawFrom(f, Math.floor(countOf(f, ...cats) * frac), ...cats);
+}
+
+/** Remove everything in these categories and return it. */
+export function drawAll(f: Fleet, ...cats: ArmsCategory[]): Fleet {
+  return drawFrom(f, countOf(f, ...cats), ...cats);
+}
+
+/**
+ * Battlefield losses: each holding loses `rate` of its strength, rounded the
+ * way the old flat model rounded it. Returns how many units were destroyed.
+ */
+export function attrite(f: Fleet, rate: number, ...cats: ArmsCategory[]): number {
+  if (rate <= 0) return 0;
+  let lost = 0;
+  for (const [id, n] of Object.entries(f)) {
+    if (n <= 0 || !inCategory(id, cats)) continue;
+    const left = Math.max(0, Math.floor(n * (1 - rate)));
+    lost += n - left;
+    f[id] = left;
+  }
+  compact(f);
+  return lost;
+}
+
+/** Drop empty holdings so a fleet does not accumulate zeroes forever. */
+export function compact(f: Fleet): void {
+  for (const [id, n] of Object.entries(f)) {
+    if (n <= 0) delete f[id];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Combat weight
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-unit weights, expressed against a reference-quality unit so that the
+ * arithmetic is identical to the flat-count model it replaces. A tank of
+ * reference power is still worth 0.09 to us and 0.06 to them.
+ */
+const OUR_WEIGHT = {
+  tank: 0.09 / REFERENCE_POWER.tank,
+  air: 0.5 / REFERENCE_POWER.air,
+  sam: 1.2 / REFERENCE_POWER.sam,
+};
+
+const THEIR_WEIGHT = {
+  tank: 0.06 / REFERENCE_POWER.tank,
+  air: 0.35 / REFERENCE_POWER.air,
+  sam: 1.0 / REFERENCE_POWER.sam,
+};
+
+/** What this inventory is worth on an Israeli front. */
+export function israeliEquipmentWeight(f: Fleet): number {
+  return (
+    powerOf(f, 'tank') * OUR_WEIGHT.tank +
+    airPower(f) * OUR_WEIGHT.air +
+    powerOf(f, 'sam') * OUR_WEIGHT.sam
+  );
+}
+
+/** What it is worth to the other side. */
+export function enemyEquipmentWeight(f: Fleet): number {
+  return (
+    powerOf(f, 'tank') * THEIR_WEIGHT.tank +
+    airPower(f) * THEIR_WEIGHT.air +
+    powerOf(f, 'sam') * THEIR_WEIGHT.sam
+  );
+}

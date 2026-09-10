@@ -7,8 +7,20 @@
  * player only as a bar and a sentence from the front-line commander.
  */
 
-import type { Forces, Front, FrontId, GameState, NationId, StrategicDirective } from './types';
-import { FRONTS, airUnits } from './types';
+import type { Front, FrontId, GameState, NationId, StrategicDirective } from './types';
+import { FRONTS } from './types';
+import {
+  airCount,
+  attrite,
+  countOf,
+  drawAll,
+  drawFraction,
+  drawFrom,
+  enemyEquipmentWeight,
+  israeliEquipmentWeight,
+  mergeInto,
+  totalUnits,
+} from './fleet';
 import { clamp } from './ladders';
 import { canInvade } from './diplomacy';
 import { collapseGovernment } from './intelligence';
@@ -43,8 +55,7 @@ const STRIKE_LABELS: Record<string, string> = {
  * brigades it came with, so this asks about the whole column, not just troops.
  */
 function forcesOnFront(front: Front): boolean {
-  const d = front.deployed;
-  return d.brigades > 0 || d.tanks > 0 || airUnits(d) > 0 || d.sam > 0;
+  return front.deployed.brigades > 0 || totalUnits(front.deployed.equipment) > 0;
 }
 
 /**
@@ -79,19 +90,21 @@ export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
     opts.push({
       id: 'deploy_tanks',
       label: 'Deploy extra tank battalion',
-      ...(s.israel.stockpile.tanks < 200
+      ...(countOf(s.israel.stockpile.equipment, 'tank') < 200
         ? { disabledReason: 'The armoured reserve is exhausted.' }
         : {}),
     });
     opts.push({
       id: 'deploy_sam',
       label: 'Deploy extra SAM battery',
-      ...(s.israel.stockpile.sam < 5 ? { disabledReason: 'No batteries in reserve.' } : {}),
+      ...(countOf(s.israel.stockpile.equipment, 'sam') < 5
+        ? { disabledReason: 'No batteries in reserve.' }
+        : {}),
     });
     opts.push({
       id: 'deploy_air',
       label: 'Increase air cover',
-      ...(s.israel.stockpile.aircraft + s.israel.stockpile.helicopters < 20
+      ...(airCount(s.israel.stockpile.equipment) < 20
         ? { disabledReason: 'No squadrons can be spared.' }
         : {}),
     });
@@ -153,7 +166,7 @@ export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
 
   // Strike bombing needs poor relations and aircraft to fly.
   if (n.relations <= 3) {
-    const noAir = s.israel.stockpile.aircraft < 30;
+    const noAir = countOf(s.israel.stockpile.equipment, 'aircraft') < 30;
     for (const k of ['strike_military', 'strike_industrial', 'strike_civilian'] as const) {
       opts.push({
         id: k,
@@ -214,61 +227,46 @@ function ctxFor(s: GameState, id: NationId, israelIsSubject: boolean) {
       };
 }
 
-function moveFromStockpile(s: GameState, front: FrontId, want: Partial<Forces>): void {
-  const st = s.israel.stockpile;
+/** An order to send forces forward, in headline counts per category. */
+interface Movement {
+  brigades?: number;
+  tanks?: number;
+  aircraft?: number;
+  helicopters?: number;
+  awacs?: number;
+  sam?: number;
+  /** Send every last thing in the category, whatever it is. */
+  everything?: boolean;
+}
+
+function moveFromStockpile(s: GameState, front: FrontId, want: Movement): void {
+  const st = s.israel.stockpile.equipment;
   const dep = s.fronts[front].deployed;
+
   if (want.brigades) {
-    const n = Math.min(want.brigades, freeBrigades(s));
-    dep.brigades += n;
+    dep.brigades += Math.min(want.brigades, freeBrigades(s));
   }
-  if (want.tanks) {
-    const n = Math.min(want.tanks, st.tanks);
-    st.tanks -= n;
-    dep.tanks += n;
+  if (want.everything) {
+    mergeInto(dep.equipment, drawAll(st, 'tank', 'aircraft', 'helicopter', 'surveillance', 'sam'));
+    return;
   }
-  if (want.aircraft) {
-    const n = Math.min(want.aircraft, st.aircraft);
-    st.aircraft -= n;
-    dep.aircraft += n;
-  }
-  if (want.helicopters) {
-    const n = Math.min(want.helicopters, st.helicopters);
-    st.helicopters -= n;
-    dep.helicopters += n;
-  }
-  if (want.awacs) {
-    const n = Math.min(want.awacs, st.awacs);
-    st.awacs -= n;
-    dep.awacs += n;
-  }
-  if (want.sam) {
-    const n = Math.min(want.sam, st.sam);
-    st.sam -= n;
-    dep.sam += n;
-  }
+  if (want.tanks) mergeInto(dep.equipment, drawFrom(st, want.tanks, 'tank'));
+  if (want.aircraft) mergeInto(dep.equipment, drawFrom(st, want.aircraft, 'aircraft'));
+  if (want.helicopters) mergeInto(dep.equipment, drawFrom(st, want.helicopters, 'helicopter'));
+  if (want.awacs) mergeInto(dep.equipment, drawFrom(st, want.awacs, 'surveillance'));
+  if (want.sam) mergeInto(dep.equipment, drawFrom(st, want.sam, 'sam'));
 }
 
 function returnToStockpile(s: GameState, front: FrontId, all: boolean): void {
-  const st = s.israel.stockpile;
+  const st = s.israel.stockpile.equipment;
   const dep = s.fronts[front].deployed;
-  const frac = all ? 1 : 0.34;
-  const t = Math.floor(dep.tanks * frac);
-  const a = Math.floor(dep.aircraft * frac);
-  const h = Math.floor(dep.helicopters * frac);
-  const e = Math.floor(dep.awacs * frac);
-  const m = Math.floor(dep.sam * frac);
-  const b = all ? dep.brigades : Math.min(1, dep.brigades);
-  dep.tanks -= t;
-  dep.aircraft -= a;
-  dep.helicopters -= h;
-  dep.awacs -= e;
-  dep.sam -= m;
-  dep.brigades -= b;
-  st.tanks += t;
-  st.aircraft += a;
-  st.helicopters += h;
-  st.awacs += e;
-  st.sam += m;
+  const cats = ['tank', 'aircraft', 'helicopter', 'surveillance', 'sam'] as const;
+
+  dep.brigades -= all ? dep.brigades : Math.min(1, dep.brigades);
+  for (const cat of cats) {
+    // Each category comes home in its own proportion, as it always did.
+    mergeInto(st, all ? drawAll(dep.equipment, cat) : drawFraction(dep.equipment, 0.34, cat));
+  }
 }
 
 export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
@@ -366,14 +364,7 @@ export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
         moveFromStockpile(s, id, { aircraft: 16, helicopters: 4 });
         break;
       case 'deploy_all':
-        moveFromStockpile(s, id, {
-          brigades: freeBrigades(s),
-          tanks: s.israel.stockpile.tanks,
-          aircraft: s.israel.stockpile.aircraft,
-          helicopters: s.israel.stockpile.helicopters,
-          awacs: s.israel.stockpile.awacs,
-          sam: s.israel.stockpile.sam,
-        });
+        moveFromStockpile(s, id, { brigades: freeBrigades(s), everything: true });
         break;
       case 'withdraw_brigade':
         returnToStockpile(s, id, false);
@@ -402,15 +393,17 @@ function resolveStrike(
   s.stats.actsOfViolence++;
 
   // Enemy air defence gets a say.
-  const defence = n.forces.sam * 0.004 + n.forces.aircraft * 0.0004;
+  const defence =
+    countOf(n.forces.equipment, 'sam') * 0.004 +
+    countOf(n.forces.equipment, 'aircraft') * 0.0004;
   const success = rng.next() > clamp(defence, 0.05, 0.6);
 
-  s.israel.stockpile.aircraft = Math.max(0, s.israel.stockpile.aircraft - rng.int(0, 4));
+  drawFrom(s.israel.stockpile.equipment, rng.int(0, 4), 'aircraft');
   s.tension = clamp(s.tension + 8, 0, 100);
   n.relationsPoints = clamp(n.relationsPoints - 35, -100, 100);
 
   if (!success) {
-    s.israel.stockpile.aircraft = Math.max(0, s.israel.stockpile.aircraft - rng.int(2, 6));
+    drawFrom(s.israel.stockpile.equipment, rng.int(2, 6), 'aircraft');
     s.israel.prestige = clamp(s.israel.prestige - 4, 0, 100);
     out.push({ text: expand(rng.pick(STRIKE_FAILED), ctx), category: 'war', weight: 3 });
     return out;
@@ -418,8 +411,8 @@ function resolveStrike(
 
   switch (kind) {
     case 'strike_military':
-      n.forces.tanks = Math.max(0, n.forces.tanks - rng.int(60, 200));
-      n.forces.aircraft = Math.max(0, n.forces.aircraft - rng.int(5, 25));
+      drawFrom(n.forces.equipment, rng.int(60, 200), 'tank');
+      drawFrom(n.forces.equipment, rng.int(5, 25), 'aircraft');
       s.israel.usRelations = clamp(s.israel.usRelations - 5, 0, 100);
       out.push({ text: expand(rng.pick(STRIKE_MILITARY), ctx), category: 'war', weight: 2 });
       break;
@@ -478,7 +471,7 @@ function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEven
   s.israel.usRelations = clamp(s.israel.usRelations - 45, 0, 100);
   s.israel.prestige = clamp(s.israel.prestige + 10, 0, 100);
   n.forces.brigades = Math.max(0, n.forces.brigades - 5);
-  n.forces.tanks = Math.floor(n.forces.tanks * 0.4);
+  attrite(n.forces.equipment, 0.6, 'tank');
   n.stability = 0;
 
   return [
@@ -500,14 +493,13 @@ function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEven
 /** Total combat weight Israel has on one front. */
 export function israeliStrength(s: GameState, id: FrontId): number {
   const d = s.fronts[id].deployed;
-  return d.brigades * 100 + d.tanks * 0.09 + airUnits(d) * 0.5 + d.sam * 1.2;
+  return d.brigades * 100 + israeliEquipmentWeight(d.equipment);
 }
 
 /** Total combat weight the defender can bring to that front. */
 export function enemyStrength(s: GameState, id: FrontId): number {
   const n = s.nations[id];
-  let base = n.forces.brigades * 78 + n.forces.tanks * 0.06 + airUnits(n.forces) * 0.35;
-  base += n.forces.sam * 1.0;
+  let base = n.forces.brigades * 78 + enemyEquipmentWeight(n.forces.equipment);
   // A regime falling apart cannot fight well.
   base *= 0.5 + (n.stability / 100) * 0.7;
   // Allies who have a pact with the defender pile in.
@@ -533,26 +525,14 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
     // forces the player had left idle.
     if (!front.mobilised && front.warProgress < -20) {
       front.mobilised = true;
-      const spare = freeBrigades(s);
-      const st = s.israel.stockpile;
-      const brigades = Math.min(2, spare);
-      const tanks = Math.floor(st.tanks * 0.35);
-      const aircraft = Math.floor(st.aircraft * 0.35);
-      const helicopters = Math.floor(st.helicopters * 0.35);
-      const awacs = Math.floor(st.awacs * 0.35);
-      const sam = Math.floor(st.sam * 0.35);
-      if (brigades > 0 || tanks > 0) {
+      const st = s.israel.stockpile.equipment;
+      const brigades = Math.min(2, freeBrigades(s));
+      const cats = ['tank', 'aircraft', 'helicopter', 'surveillance', 'sam'] as const;
+      const called: typeof st = {};
+      for (const cat of cats) mergeInto(called, drawFraction(st, 0.35, cat));
+      if (brigades > 0 || totalUnits(called) > 0) {
         front.deployed.brigades += brigades;
-        front.deployed.tanks += tanks;
-        front.deployed.aircraft += aircraft;
-        front.deployed.helicopters += helicopters;
-        front.deployed.awacs += awacs;
-        front.deployed.sam += sam;
-        st.tanks -= tanks;
-        st.aircraft -= aircraft;
-        st.helicopters -= helicopters;
-        st.awacs -= awacs;
-        st.sam -= sam;
+        mergeInto(front.deployed.equipment, called);
         events.push({
           text: `Reserve mobilised as ${n.adjective} forces press the border`,
           category: 'war',
@@ -572,21 +552,11 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
     const ourLossRate = clamp(0.1 - front.warProgress / 900, 0.02, 0.22);
     const theirLossRate = clamp(0.1 + front.warProgress / 900, 0.02, 0.22);
 
-    front.deployed.tanks = Math.max(0, Math.floor(front.deployed.tanks * (1 - ourLossRate)));
-    front.deployed.aircraft = Math.max(
-      0,
-      Math.floor(front.deployed.aircraft * (1 - ourLossRate * 0.5)),
-    );
-    front.deployed.helicopters = Math.max(
-      0,
-      Math.floor(front.deployed.helicopters * (1 - ourLossRate * 0.5)),
-    );
+    attrite(front.deployed.equipment, ourLossRate, 'tank');
+    attrite(front.deployed.equipment, ourLossRate * 0.5, 'aircraft', 'helicopter');
     // Early warning craft orbit well behind the line and are not shot down.
-    n.forces.tanks = Math.max(0, Math.floor(n.forces.tanks * (1 - theirLossRate)));
-    n.forces.aircraft = Math.max(
-      0,
-      Math.floor(n.forces.aircraft * (1 - theirLossRate * 0.5)),
-    );
+    attrite(n.forces.equipment, theirLossRate, 'tank');
+    attrite(n.forces.equipment, theirLossRate * 0.5, 'aircraft');
 
     // Manpower comes out of the reserve pool.
     s.israel.reserves = Math.max(0, s.israel.reserves - Math.round(ourLossRate * 60));
