@@ -1,4 +1,4 @@
-import type { GameState, PolicingDirective } from '../engine';
+import type { FactionDirective, GameState, PolicingDirective } from '../engine';
 import {
   MAJORITY,
   POSTURE_LABEL,
@@ -10,6 +10,7 @@ import {
   unrestLabel,
 } from '../engine';
 import { Bar, Choices, Panel, Row } from './bits';
+import { Militias } from './Militias';
 
 /** Where a partner stands, as a word. */
 function standingLabel(v: number): string {
@@ -93,10 +94,12 @@ export function Domestic({
   s,
   setPolicing,
   setFundNuclear,
+  setFaction,
 }: {
   s: GameState;
   setPolicing: (d: PolicingDirective) => void;
   setFundNuclear: (v: boolean) => void;
+  setFaction: (id: string, d: FactionDirective) => void;
 }) {
   const p = s.palestine;
 
@@ -104,6 +107,13 @@ export function Domestic({
     <div className="grid2">
       <div>
         <Coalition s={s} />
+
+        <Militias
+          s={s}
+          home="territories"
+          setFaction={setFaction}
+          title="Armed groups in the territories"
+        />
 
         <Panel title="West Bank policy">
           <div className="rows">

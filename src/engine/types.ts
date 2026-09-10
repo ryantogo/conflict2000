@@ -7,6 +7,7 @@
  */
 
 import type { PowerDirective, PowerId, PowerState } from './powers';
+import type { FactionDirective, FactionState } from './factions';
 
 export type NationId =
   | 'egypt'
@@ -91,6 +92,8 @@ export interface Directives {
   strategic: Partial<Record<FrontId, StrategicDirective>>;
   /** Approaches to the capitals that are not in the region. */
   powers: Partial<Record<PowerId, PowerDirective>>;
+  /** What to do about the armed groups that are not governments. */
+  factions: Record<string, FactionDirective>;
   policing: PolicingDirective;
   fundNuclear: boolean;
   /** Orders placed with suppliers this month; delivered after a lead time. */
@@ -415,6 +418,8 @@ export interface GameState {
     armsAgreements: number;
     armsExpenditure: number;
   };
+  /** Armed non-state groups, keyed by faction id. */
+  factions: Record<string, FactionState>;
   /** Ids of scripted events that have already fired. */
   firedEvents: string[];
   /** Free-text log of everything that happened, newest first. */

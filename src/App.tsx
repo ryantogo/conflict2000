@@ -5,6 +5,7 @@ import type {
   GameState,
   IntelDirective,
   NationId,
+  FactionDirective,
   PolicingDirective,
   PowerDirective,
   PowerId,
@@ -62,6 +63,11 @@ export default function App() {
     setDiplomatic: (id: NationId, d: DiplomaticDirective) => {
       if (game.directives.diplomatic[id] === d) delete game.directives.diplomatic[id];
       else game.directives.diplomatic[id] = d;
+      touch();
+    },
+    setFaction: (id: string, d: FactionDirective) => {
+      if (game.directives.factions[id] === d) delete game.directives.factions[id];
+      else game.directives.factions[id] = d;
       touch();
     },
     setPower: (id: PowerId, d: PowerDirective) => {

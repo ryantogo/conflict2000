@@ -13,6 +13,7 @@ import { PRODUCTION_LINES } from '../data/domestic2000';
 import { ORIGINS } from '../data/equipment';
 import { createCoalition } from './coalition';
 import { createPowers } from './powers';
+import { createFactions } from './factions';
 
 export function emptyDirectives(): Directives {
   return {
@@ -20,6 +21,7 @@ export function emptyDirectives(): Directives {
     intel: {},
     strategic: {},
     powers: {},
+    factions: {},
     policing: 'none',
     fundNuclear: false,
     purchases: [],
@@ -131,6 +133,7 @@ export function createGame(seed = Date.now() & 0x7fffffff): GameState {
       armsAgreements: 0,
       armsExpenditure: 0,
     },
+    factions: createFactions(),
     firedEvents: [],
     log: [],
   };

@@ -52,7 +52,7 @@ function distribution(games: GameState[]): Record<string, number> {
 describe('balance', () => {
   const N = 120;
 
-  it('a passive premier who signs everything usually survives the decade', () => {
+  it('a passive premier who signs everything can still survive the decade', () => {
     const games = Array.from({ length: N }, (_, i) => playPassive(i + 1, true));
     const dist = distribution(games);
     // eslint-disable-next-line no-console
@@ -60,6 +60,14 @@ describe('balance', () => {
 
     expect(dist.unresolved ?? 0).toBe(0);
     const survived = dist.survived ?? 0;
+    // This used to read "usually survives", and it used to be true: 57% at the
+    // point the harness was written. Five phases of deepening have taken it to
+    // roughly 43% — an enemy that rearms, a coalition that walks out, an
+    // embargo that grounds aircraft, an assessment that can be wrong, and now
+    // Hezbollah. Survival is still the single likeliest outcome and doing
+    // nothing is still not fatal, which is what this floor is guarding. The
+    // floor has deliberately not been moved to make room; if a later phase
+    // pushes through it, that is a finding rather than a number to adjust.
     expect(survived / N).toBeGreaterThan(0.4);
     // Doing nothing must not be a winning strategy either.
     expect((dist.victory ?? 0) / N).toBeLessThan(0.1);

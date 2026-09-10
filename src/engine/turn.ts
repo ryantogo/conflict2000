@@ -23,6 +23,7 @@ import { emptyDirectives, freeBrigades } from './state';
 import { endWar, expireMandates, resolveDiplomacy } from './diplomacy';
 import { driftInternals, resolveIntelligence } from './intelligence';
 import { redrawAssessments } from './assessment';
+import { resolveFactions, resolveSuccessors } from './factions';
 import { resolveCombat, resolveStrategic } from './military';
 import { resolveDeliveries, resolveReadiness, updateEmbargoes } from './arms';
 import { recomputeOverhead, resolveProduction } from './industry';
@@ -128,6 +129,10 @@ export function resolveTurn(s: GameState): GameState {
   events.push(...resolveStrategic(s, rng));
   push(resolveNuclear(s, rng), 'nuclear');
   events.push(...resolvePalestine(s, rng));
+  // The groups nobody governs move after the states do, because most of what
+  // they are reacting to is what the states just did.
+  events.push(...resolveFactions(s, rng));
+  events.push(...resolveSuccessors(s, rng));
 
   // 3. Everybody else moves.
   events.push(...runAi(s, rng));

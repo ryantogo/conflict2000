@@ -161,9 +161,9 @@ Where it landed. Passive players run 120 games each, the strategist 80:
 
 | player | victory | survived decade | invaded | removed or killed |
 | --- | --- | --- | --- | --- |
-| passive, signs everything | 0% | 44% | 43% | 13% |
+| passive, signs everything | 0% | 43% | 43% | 15% |
 | passive, refuses everything | 0% | 0% | 0% | 100% |
-| disciplined strategist | 20% | 13% | 6% | 58% |
+| disciplined strategist | 19% | 14% | 5% | 60% |
 
 Signing at Camp David and then doing nothing survives the decade more often
 than not, and never wins. Refusing and then doing nothing loses every single
@@ -423,7 +423,50 @@ along, and no amount of adjusting the bot would have found it.
 
 ---
 
-## 8. The map
+## 8. The groups nobody governs
+
+This section closes the omission the last one on this list used to describe:
+Hezbollah and the PLO as an opposition-strength number and a scripted event,
+in a game that opens three weeks after the withdrawal from southern Lebanon.
+
+A faction is deliberately **not** `Nation.oppositionStrength`. That is the
+internal political opposition — the people a foreign service funds into a
+coup, which is a question about the regime. A faction is an armed
+organisation with a patron, a constituency and a programme, and it frequently
+wants its own government gone rather less than it wants Israel gone.
+Conflating the two is how Hezbollah ends up modelled as a Lebanese election
+result. They coexist; they are different problems.
+
+They have no borders, so they get a card and no geometry — the same treatment
+Libya has always had. Carving faction territory out of the map would break the
+shared-vertex assertions in `geography.test.ts`, and a militia does not hold a
+frontier anyway.
+
+Strength converges toward what a group's circumstances sustain — its patron's
+stability, its constituency, and how much space its host gives it — rather
+than accumulating. The first version accumulated, everything reached a hundred,
+and a passive premier survived the decade 32% of the time instead of 53%.
+Hitting them works and recruits for them, which is the whole problem with
+them and is meant to feel like it.
+
+**And a collapse stops being a dead end.** A fallen state used to offer
+nothing on any screen but a withdrawal — which is the bug that stranded a
+player's forces on the Lebanese border and started this whole roadmap. States
+do not vanish; they come apart into the people who were holding them together.
+Syria fragments into the officer corps, the Muslim Brotherhood and the
+Damascus notables. Iraq into the Sunni officer class, the Shia south, and the
+Kurds, who are an old friend of this service. Arm one far enough and they form
+a government — and the government you get is the one you armed, disposition
+and all. Backing the Islamist front in Cairo will install the Islamist front
+in Cairo.
+
+Restoring a state also un-collapses it, which forfeits it as a victory
+condition. Putting a friendly government in Damascus and winning the game by
+destroying Damascus are alternatives, and the player has to pick one.
+
+---
+
+## 9. The map
 
 The original shipped six EGA maps as run-length scanline data. Decoding them
 took three goes: the records are five bytes (colour, x16, y16), each starting a
@@ -474,7 +517,7 @@ Live state is drawn rather than described: brigade counts thicken the frontier
 they hold, wars dash it red, the territories hatch in proportion to unrest, and
 collapsed governments go grey and struck through.
 
-## 9. Deliberate omissions
+## 10. Deliberate omissions
 
 - **The original pixel art is not used.** The decoders work and the assets are
   fully recoverable (`tools/decode_assets.py`). The map borrows the original's
@@ -483,7 +526,13 @@ collapsed governments go grey and struck through.
 - **`.FNT` files are not decoded.** Not needed without the pixel art.
 - **Save games are not compatible** with the original's 7372-byte `CONF*.SAV`,
   and there is no save at all yet — the most obvious next thing to build.
-- **Non-state actors are not first-class.** Hezbollah and the PLO exist as an
-  opposition-strength number and a scripted event, not as entities with their
-  own goals. For 2000 that is the most conspicuous simplification, and the
-  natural direction for a second pass.
+- **Factions have no territory.** They are entities with patrons, goals and
+  their own arithmetic, but they hold no ground on the map — the geometry
+  asserts a fixed table of shared border vertices and a militia is a poor
+  reason to break it. A civil war is currently something you read about and
+  fund rather than something you watch move.
+- **The reference bots do not use half of what has been built.** They never
+  run agents, open a production line, lobby a capital or back a successor, so
+  every balance figure in this document is what happens to a player who
+  ignores five phases of mechanics. The real ceiling is higher and nobody has
+  measured it.

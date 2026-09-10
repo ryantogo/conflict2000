@@ -18,6 +18,7 @@ import {
   expand,
 } from '../data/headlines';
 import { adjustRelations } from './powers';
+import { spawnSuccessors } from './factions';
 
 export interface IntelOption {
   id: IntelDirective;
@@ -375,6 +376,11 @@ export function collapseGovernment(
     front.warMonths = 0;
   }
   s.log.unshift(`${n.name}: government collapsed (${cause}).`);
+
+  // A state does not vanish. It comes apart into the people who were holding
+  // it together, and they start fighting each other — which is why a collapse
+  // is no longer a dead end on every screen in the game.
+  for (const e of spawnSuccessors(s, id)) s.log.unshift(e.text);
 }
 
 /** Natural drift in opposition strength and regime stability, absent Israel. */

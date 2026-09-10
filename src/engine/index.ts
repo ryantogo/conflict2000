@@ -34,6 +34,9 @@ export {
   enemyStrength,
 } from './military';
 export { assess, confidenceLabel, coverage } from './assessment';
+export { factionOptions, factionsIn } from './factions';
+export { successorOptions, successorsOf } from './factions';
+export type { FactionDirective, FactionStatus, SuccessorStatus } from './factions';
 export type { Assessment } from './assessment';
 export {
   LOBBY_COST,

@@ -6,6 +6,7 @@ import type {
   IntelDirective,
   NationId,
   PolicingDirective,
+  FactionDirective,
   PowerDirective,
   PowerId,
   StrategicDirective,
@@ -36,6 +37,7 @@ export interface PlanningHandlers {
   setDiplomatic: (id: NationId, d: DiplomaticDirective) => void;
   setIntel: (id: NationId, d: IntelDirective) => void;
   setPower: (id: PowerId, d: PowerDirective) => void;
+  setFaction: (id: string, d: FactionDirective) => void;
   setStrategic: (id: FrontId, d: StrategicDirective) => void;
   setPolicing: (d: PolicingDirective) => void;
   setFundNuclear: (v: boolean) => void;
@@ -79,13 +81,20 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
           setPower={h.setPower}
         />
       )}
-      {tab === 'strategic' && <Strategic s={s} setStrategic={h.setStrategic} />}
+      {tab === 'strategic' && (
+        <Strategic s={s} setStrategic={h.setStrategic} setFaction={h.setFaction} />
+      )}
       {tab === 'arms' && (
         <Procurement s={s} onOrder={h.order} onProduction={h.setProductionLine} />
       )}
       {tab === 'review' && <Review s={s} />}
       {tab === 'domestic' && (
-        <Domestic s={s} setPolicing={h.setPolicing} setFundNuclear={h.setFundNuclear} />
+        <Domestic
+          s={s}
+          setPolicing={h.setPolicing}
+          setFundNuclear={h.setFundNuclear}
+          setFaction={h.setFaction}
+        />
       )}
 
       <div className="btn-row end" style={{ marginTop: 22 }}>

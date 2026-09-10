@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FrontId, GameState, StrategicDirective } from '../engine';
+import type { FactionDirective, FrontId, GameState, StrategicDirective } from '../engine';
 import {
   FRONTS,
   REGIONAL_NORM,
@@ -14,13 +14,16 @@ import {
   strategicOptions,
 } from '../engine';
 import { Choices, Panel, Row, WarBar } from './bits';
+import { Militias, Succession } from './Militias';
 
 export function Strategic({
   s,
   setStrategic,
+  setFaction,
 }: {
   s: GameState;
   setStrategic: (id: FrontId, d: StrategicDirective) => void;
+  setFaction: (id: string, d: FactionDirective) => void;
 }) {
   const [selected, setSelected] = useState<FrontId>('lebanon');
   const front = s.fronts[selected];
@@ -146,13 +149,24 @@ export function Strategic({
         )}
       </div>
 
-      <Panel title="Strategic action">
-        <Choices
-          options={strategicOptions(s, selected)}
-          selected={s.directives.strategic[selected]}
-          onSelect={(d) => setStrategic(selected, d)}
+      <div>
+        <Succession s={s} nation={selected} setFaction={setFaction} />
+
+        <Militias
+          s={s}
+          home={selected}
+          setFaction={setFaction}
+          title="Armed groups on this border"
         />
-      </Panel>
+
+        <Panel title="Strategic action">
+          <Choices
+            options={strategicOptions(s, selected)}
+            selected={s.directives.strategic[selected]}
+            onSelect={(d) => setStrategic(selected, d)}
+          />
+        </Panel>
+      </div>
     </div>
   );
 }
