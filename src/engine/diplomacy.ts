@@ -12,6 +12,7 @@ import type { DiplomaticDirective, GameState, NationId } from './types';
 import { FRONTS } from './types';
 import { clamp, pointsToRelations } from './ladders';
 import type { Rng } from './rng';
+import { adjustRelations } from './powers';
 
 export interface DiplomaticOption {
   id: DiplomaticDirective;
@@ -122,7 +123,7 @@ export function resolveDiplomacy(s: GameState, rng: Rng): string[] {
         s.tension = clamp(s.tension + rng.int(1, 3), 0, 100);
         // Manufacturing incidents is cheap, but not free: Washington can read
         // a pattern as easily as anyone else.
-        s.israel.usRelations = clamp(s.israel.usRelations - 3, 0, 100);
+        adjustRelations(s, 'usa', -3);
         notes.push(`A border dispute between Israel and ${n.name} has aggravated relations.`);
         break;
       }
@@ -130,7 +131,7 @@ export function resolveDiplomacy(s: GameState, rng: Rng): string[] {
       case 'reduce': {
         n.relationsPoints = clamp(n.relationsPoints - rng.int(18, 30), -100, 100);
         s.tension = clamp(s.tension + rng.int(2, 4), 0, 100);
-        s.israel.usRelations = clamp(s.israel.usRelations - 5, 0, 100);
+        adjustRelations(s, 'usa', -5);
         s.israel.prestige = clamp(s.israel.prestige - 2, 0, 100);
         notes.push(`Israeli-${n.adjective} relations have been noticeably soured.`);
         break;

@@ -16,6 +16,7 @@ import { freeBrigades } from './state';
 import { coalitionReact } from './coalition';
 import type { Rng } from './rng';
 import { PALESTINE, expand } from '../data/headlines';
+import { adjustRelations } from './powers';
 
 export interface PolicingOption {
   id: PolicingDirective;
@@ -105,7 +106,7 @@ export function resolvePalestine(s: GameState, rng: Rng): PalestineEvent[] {
   // Hard tactics are effective and expensive.
   if (p.tactics === 'hard' && p.brigadesPosted > 0) {
     s.israel.prestige = clamp(s.israel.prestige - 1, 0, 100);
-    s.israel.usRelations = clamp(s.israel.usRelations - 1, 0, 100);
+    adjustRelations(s, 'usa', -1);
     // The right approves of a firm hand and the left does not, month on month.
     coalitionReact(s, 'hawkish', 2.5);
     // And they radicalise: suppression now, worse later.

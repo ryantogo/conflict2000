@@ -19,6 +19,7 @@ import {
 } from './index';
 import type { GameState } from './index';
 import { expand } from '../data/headlines';
+import { relationsWith } from './powers';
 
 /** Drive one full game to an ending, choosing legal options at random. */
 function playRandomGame(seed: number): GameState {
@@ -73,7 +74,7 @@ function assertInvariants(g: GameState) {
   expect(g.israel.prestige).toBeGreaterThanOrEqual(0);
   expect(g.israel.prestige).toBeLessThanOrEqual(100);
   expect(g.israel.popularity).toBeGreaterThanOrEqual(0);
-  expect(g.israel.usRelations).toBeLessThanOrEqual(100);
+  expect(relationsWith(g, 'usa')).toBeLessThanOrEqual(100);
   expect(g.palestine.unrest).toBeGreaterThanOrEqual(0);
   expect(g.palestine.unrest).toBeLessThanOrEqual(10);
   expect(g.israel.brigades).toBeGreaterThanOrEqual(0);

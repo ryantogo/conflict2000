@@ -37,6 +37,7 @@ import {
   WAR_LOSSES,
   expand,
 } from '../data/headlines';
+import { adjustRelations } from './powers';
 
 export interface StrategicOption {
   id: StrategicDirective;
@@ -349,7 +350,7 @@ export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
         n.relations = 0;
         s.tension = clamp(s.tension + 18, 0, 100);
         s.israel.prestige = clamp(s.israel.prestige + 2, 0, 100);
-        s.israel.usRelations = clamp(s.israel.usRelations - 12, 0, 100);
+        adjustRelations(s, 'usa', -12);
         coalitionReact(s, 'hawkish', 12);
         events.push({
           text: expand(rng.pick(WAR_DECLARED), ctx),
@@ -421,13 +422,13 @@ function resolveStrike(
     case 'strike_military':
       drawFrom(n.forces.equipment, rng.int(60, 200), 'tank');
       drawFrom(n.forces.equipment, rng.int(5, 25), 'aircraft');
-      s.israel.usRelations = clamp(s.israel.usRelations - 5, 0, 100);
+      adjustRelations(s, 'usa', -5);
       out.push({ text: expand(rng.pick(STRIKE_MILITARY), ctx), category: 'war', weight: 2 });
       break;
 
     case 'strike_industrial':
       n.stability = clamp(n.stability - rng.int(3, 8), 0, 100);
-      s.israel.usRelations = clamp(s.israel.usRelations - 8, 0, 100);
+      adjustRelations(s, 'usa', -8);
       out.push({ text: expand(rng.pick(STRIKE_INDUSTRIAL), ctx), category: 'war', weight: 2 });
       break;
 
@@ -435,7 +436,7 @@ function resolveStrike(
       // Effective and indefensible.
       n.stability = clamp(n.stability - rng.int(6, 14), 0, 100);
       s.stats.actsOfViolence += 2;
-      s.israel.usRelations = clamp(s.israel.usRelations - 18, 0, 100);
+      adjustRelations(s, 'usa', -18);
       s.israel.prestige = clamp(s.israel.prestige - 6, 0, 100);
       s.tension = clamp(s.tension + 6, 0, 100);
       out.push({ text: expand(rng.pick(STRIKE_CIVILIAN), ctx), category: 'war', weight: 3 });
@@ -443,7 +444,7 @@ function resolveStrike(
 
     case 'strike_nuclear':
       n.nuclearProgress = Math.max(0, n.nuclearProgress - rng.int(40, 70));
-      s.israel.usRelations = clamp(s.israel.usRelations - 10, 0, 100);
+      adjustRelations(s, 'usa', -10);
       out.push({
         text: expand('*s destroy @ nuclear reactor in strike', ctx),
         category: 'war',
@@ -476,7 +477,7 @@ function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEven
   s.stats.nukesUsed++;
   s.stats.actsOfViolence += 10;
   s.tension = clamp(s.tension + 45, 0, 100);
-  s.israel.usRelations = clamp(s.israel.usRelations - 45, 0, 100);
+  adjustRelations(s, 'usa', -45);
   s.israel.prestige = clamp(s.israel.prestige + 10, 0, 100);
   n.forces.brigades = Math.max(0, n.forces.brigades - 5);
   attrite(n.forces.equipment, 0.6, 'tank');

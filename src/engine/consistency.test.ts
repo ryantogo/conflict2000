@@ -13,6 +13,7 @@ import {
 import type { GameState } from './index';
 import { DEMILITARISED_MONTHS, endWar, expireMandates } from './diplomacy';
 import { resolveCombat, resolveStrategic } from './military';
+import { relationsWith, setRelations } from './powers';
 
 /**
  * The screens make promises. These are the ones the engine used not to keep:
@@ -36,12 +37,12 @@ describe('an empty chair costs something', () => {
   it('charges for staying away, and remembers it was Camp David', () => {
     const g = createGame(3);
     startGame(g);
-    const us = g.israel.usRelations;
+    const us = relationsWith(g, 'usa');
     const prestige = g.israel.prestige;
 
     applySummit(g, {}, false);
 
-    expect(g.israel.usRelations).toBeLessThan(us);
+    expect(relationsWith(g, 'usa')).toBeLessThan(us);
     expect(g.israel.prestige).toBeLessThan(prestige);
     expect(g.firedEvents).toContain('camp-david-refused');
   });
@@ -49,11 +50,11 @@ describe('an empty chair costs something', () => {
   it('still charges nothing when the delegation attended and found nothing to sign', () => {
     const g = createGame(3);
     startGame(g);
-    const us = g.israel.usRelations;
+    const us = relationsWith(g, 'usa');
 
     applySummit(g, {});
 
-    expect(g.israel.usRelations).toBe(us);
+    expect(relationsWith(g, 'usa')).toBe(us);
     expect(g.firedEvents).not.toContain('camp-david-refused');
   });
 });
@@ -165,7 +166,7 @@ describe('money we were given is money we keep', () => {
   it('does not confiscate an American aid package at the month boundary', () => {
     const g = createGame(21);
     startGame(g);
-    g.israel.usRelations = 90;
+    setRelations(g, 'usa', 90);
     // A premier who has been saving for a big order, and then gets a package.
     g.israel.funds = g.israel.defenceBudget * 3;
     const offer = budgetOffer(g);

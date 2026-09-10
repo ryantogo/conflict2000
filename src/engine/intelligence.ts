@@ -17,6 +17,7 @@ import {
   COUP_SUCCESS,
   expand,
 } from '../data/headlines';
+import { adjustRelations } from './powers';
 
 export interface IntelOption {
   id: IntelDirective;
@@ -159,7 +160,7 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
 
   /** A failed or noisy operation gets noticed, and being noticed costs. */
   const expose = (n: (typeof s.nations)[NationId], severity: number) => {
-    s.israel.usRelations = clamp(s.israel.usRelations - severity * 2, 0, 100);
+    adjustRelations(s, 'usa', -severity * 2);
     s.israel.prestige = clamp(s.israel.prestige - severity, 0, 100);
     s.tension = clamp(s.tension + severity, 0, 100);
     n.counterIntel = clamp(n.counterIntel + severity * 4, 0, 100);

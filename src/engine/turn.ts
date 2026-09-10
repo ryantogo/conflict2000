@@ -47,6 +47,7 @@ import { runScripted } from '../data/scripted';
 import { FILLER } from '../data/headlines';
 import { MASTHEADS } from '../data/nations2000';
 import { computeEnding } from './ending';
+import { adjustRelations, relationsWith } from './powers';
 
 interface RawEvent {
   text: string;
@@ -199,7 +200,7 @@ function updateMeters(s: GameState, rng: Rng): void {
 
   // Prestige tracks strength that the world can see.
   const collapsed = NATION_IDS.filter((id) => s.nations[id].collapsed).length;
-  const target = 30 + collapsed * 9 + (isr.usRelations - 50) * 0.2 - s.palestine.unrest * 1.5;
+  const target = 30 + collapsed * 9 + (relationsWith(s, 'usa') - 50) * 0.2 - s.palestine.unrest * 1.5;
   isr.prestige = clamp(isr.prestige + Math.sign(target - isr.prestige) * 1.5, 0, 100);
 
   // Washington has a memory but not a grudge. A quiet month pulls the
@@ -207,9 +208,9 @@ function updateMeters(s: GameState, rng: Rng): void {
   // stops can rebuild it over a year, and one who never stops cannot.
   if (warCount === 0) {
     const baseline = s.stats.nukesUsed > 0 ? 25 : 62;
-    isr.usRelations = clamp(isr.usRelations + (baseline - isr.usRelations) * 0.08, 0, 100);
+    adjustRelations(s, 'usa', (baseline - relationsWith(s, 'usa')) * 0.08);
   } else {
-    isr.usRelations = clamp(isr.usRelations - 2, 0, 100);
+    adjustRelations(s, 'usa', -2);
   }
 
   // Guns and butter. A defence share the economy cannot carry is felt every
@@ -317,7 +318,7 @@ function buildBriefing(s: GameState): string[] {
   out.push(`Middle East tension is ${tensionLabel(s.tension)}.`);
   out.push(`Current defence budget $${Math.round(isr.defenceBudget)} million.`);
 
-  if (isr.usRelations < 35) out.push('Our relationship with the West is becoming strained.');
+  if (relationsWith(s, 'usa') < 35) out.push('Our relationship with the West is becoming strained.');
   if (s.tension > 65) out.push('Tension in the Middle East is now concerning the West.');
   if (s.palestine.unrest > 6)
     out.push('The Palestinian problem is affecting this government’s popularity.');
@@ -338,7 +339,7 @@ function buildBriefing(s: GameState): string[] {
   }
   if (isr.suppliers.usa.embargoed)
     out.push('The U.S. have officially stopped arms trade with us.');
-  else if (isr.usRelations < 45)
+  else if (relationsWith(s, 'usa') < 45)
     out.push('The U.S Senate is trying to make arms trade with Israel difficult.');
   if (isr.reserves < 100)
     out.push('We now have less than 100,000 people to call up.');
@@ -527,7 +528,7 @@ export function applySummit(
   if (!attended) {
     // The absence is noted in every capital that matters — which is what the
     // screen has always told the player, without the game ever meaning it.
-    s.israel.usRelations = clamp(s.israel.usRelations - 12, 0, 100);
+    adjustRelations(s, 'usa', -12);
     s.israel.prestige = clamp(s.israel.prestige - 5, 0, 100);
     s.tension = clamp(s.tension + 5, 0, 100);
     // Refusing to be in the room is at least as final as refusing the terms.
@@ -548,10 +549,10 @@ export function applySummit(
         // This path used to duplicate `endWar` and quietly omit the goodwill.
         endWar(s, front, notes);
         s.tension = clamp(s.tension - 4, 0, 100);
-        s.israel.usRelations = clamp(s.israel.usRelations + 8, 0, 100);
+        adjustRelations(s, 'usa', 8);
         notes.push(`The ${s.nations[front].name} war has been settled amicably by both sides.`);
       } else {
-        s.israel.usRelations = clamp(s.israel.usRelations - 10, 0, 100);
+        adjustRelations(s, 'usa', -10);
         s.israel.prestige = clamp(s.israel.prestige - 3, 0, 100);
         notes.push('Israel walked away from the ceasefire proposal.');
       }
@@ -564,7 +565,7 @@ export function applySummit(
         s.palestine.intifada = false;
         s.palestine.brigadesPosted = 0;
         s.israel.prestige = clamp(s.israel.prestige + 14, 0, 100);
-        s.israel.usRelations = clamp(s.israel.usRelations + 18, 0, 100);
+        adjustRelations(s, 'usa', 18);
         s.tension = clamp(s.tension - 15, 0, 100);
         // The right will never forgive it, and this is where a government
         // assembled out of Meretz and the NRP discovers it cannot hold both.
@@ -575,7 +576,7 @@ export function applySummit(
         }
         notes.push('A Palestinian homeland has been agreed. The PLO stands down.');
       } else {
-        s.israel.usRelations = clamp(s.israel.usRelations - 8, 0, 100);
+        adjustRelations(s, 'usa', -8);
         s.palestine.unrest = clamp(s.palestine.unrest + 1.5, 0, 10);
         // At home, refusing plays well — with exactly half the government.
         s.israel.popularity = clamp(s.israel.popularity + 6, 0, 100);
@@ -593,7 +594,7 @@ export function applySummit(
       if (accepted) {
         s.firedEvents.push(`armscap-${s.year}`);
         s.tension = clamp(s.tension - 10, 0, 100);
-        s.israel.usRelations = clamp(s.israel.usRelations + 10, 0, 100);
+        adjustRelations(s, 'usa', 10);
         notes.push('Israel has undertaken not to expand its operational army this year.');
       } else {
         s.tension = clamp(s.tension + 4, 0, 100);
@@ -624,7 +625,7 @@ export function budgetOffer(s: GameState): BudgetOffer {
   // "the more aggressive Israel appears to be, the less aid you are offered."
   const aggression =
     s.stats.warsStarted * 8 + s.stats.strikesOrdered * 3 + s.stats.nukesUsed * 40;
-  const base = (s.israel.usRelations / 100) * 1800;
+  const base = (relationsWith(s, 'usa') / 100) * 1800;
   const aid = Math.max(0, Math.round(base - aggression * 6));
   const capped = s.firedEvents.includes(`armscap-${s.year}`);
   const manpower = s.israel.reserves >= BRIGADE_MANPOWER;
@@ -683,7 +684,7 @@ export function applyBudget(
       // Standing formations are made out of reservists, not conjured beside
       // them. This used to *add* to the pool, which had the arrow backwards.
       s.israel.reserves -= BRIGADE_MANPOWER;
-      s.israel.usRelations = clamp(s.israel.usRelations - 6, 0, 100);
+      adjustRelations(s, 'usa', -6);
       s.tension = clamp(s.tension + 4, 0, 100);
       notes.push('Two further brigades — 40,000 combat soldiers — have been raised.');
     }

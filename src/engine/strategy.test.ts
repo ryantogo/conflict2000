@@ -17,6 +17,7 @@ import {
   summitProposals,
 } from './index';
 import type { FrontId, GameState } from './index';
+import { relationsWith } from './powers';
 
 /**
  * A competent strategist.
@@ -197,7 +198,7 @@ describe('a competent strategy', () => {
         max: turns[turns.length - 1],
       },
       meanActsOfViolence: mean((g) => g.stats.actsOfViolence),
-      meanUsRelations: mean((g) => g.israel.usRelations),
+      meanUsRelations: mean((g) => relationsWith(g, 'usa')),
       embargoedAtEnd: games.filter((g) => g.israel.suppliers.usa.embargoed).length,
     });
   });

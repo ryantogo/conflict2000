@@ -12,6 +12,7 @@ import { israeliOpeningStock } from '../data/inventory2000';
 import { PRODUCTION_LINES } from '../data/domestic2000';
 import { ORIGINS } from '../data/equipment';
 import { createCoalition } from './coalition';
+import { createPowers } from './powers';
 
 export function emptyDirectives(): Directives {
   return {
@@ -61,7 +62,7 @@ function createIsrael(): Israel {
   return {
     leader: 'Ehud Barak',
     prestige: 44,
-    usRelations: 74,
+    powers: createPowers(),
     // Roughly $9bn/yr of Israeli defence spending, expressed monthly.
     defenceBudget: 760,
     funds: 760,

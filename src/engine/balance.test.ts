@@ -10,6 +10,7 @@ import {
   FRONTS,
 } from './index';
 import type { GameState } from './index';
+import { setRelations } from './powers';
 
 /**
  * Balance harness.
@@ -95,7 +96,7 @@ describe('balance', () => {
       const g = createGame(seed);
       startGame(g);
       // Burn it down.
-      g.israel.usRelations = 4;
+      setRelations(g, 'usa', 4);
       for (const id of ['usa', 'britain', 'france'] as const) {
         g.israel.suppliers[id].embargoed = true;
       }
@@ -129,7 +130,7 @@ describe('balance', () => {
   it('keeps the embargo on while the aggression continues', () => {
     const g = createGame(78);
     startGame(g);
-    g.israel.usRelations = 4;
+    setRelations(g, 'usa', 4);
     g.israel.suppliers.usa.embargoed = true;
 
     // Nuking somebody is not something Washington gets over.

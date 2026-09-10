@@ -12,6 +12,7 @@ import type { GameState, NuclearPosture } from './types';
 import { clamp } from './ladders';
 import type { Rng } from './rng';
 import { NUCLEAR, expand } from '../data/headlines';
+import { adjustRelations } from './powers';
 
 const ORDER: NuclearPosture[] = ['opacity', 'signalled', 'declared', 'tested'];
 
@@ -81,18 +82,18 @@ export function resolveNuclear(s: GameState, rng: Rng): { text: string; weight: 
           case 'signalled':
             // A leak, a photograph, a minister who says too much.
             s.tension = clamp(s.tension + 6, 0, 100);
-            isr.usRelations = clamp(isr.usRelations - 5, 0, 100);
+            adjustRelations(s, 'usa', -5);
             events.push({ text: 'West concerned by Middle East nuclear situation', weight: 2 });
             break;
           case 'declared':
             s.tension = clamp(s.tension + 14, 0, 100);
-            isr.usRelations = clamp(isr.usRelations - 16, 0, 100);
+            adjustRelations(s, 'usa', -16);
             isr.prestige = clamp(isr.prestige + 8, 0, 100);
             events.push({ text: 'Israel abandons ambiguity: <We are a nuclear power>', weight: 3 });
             break;
           case 'tested':
             s.tension = clamp(s.tension + 22, 0, 100);
-            isr.usRelations = clamp(isr.usRelations - 24, 0, 100);
+            adjustRelations(s, 'usa', -24);
             isr.prestige = clamp(isr.prestige + 12, 0, 100);
             events.push({ text: 'Recent tremor evidence of atomic testing', weight: 3 });
             break;

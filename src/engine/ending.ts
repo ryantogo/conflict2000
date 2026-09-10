@@ -9,6 +9,7 @@
 import type { Ending, EndingKind, GameState } from './types';
 import { FRONTS } from './types';
 import { prestigeLabel } from './ladders';
+import { relationsWith } from './powers';
 
 const QUALITY = [
   'a complete joke.',
@@ -123,7 +124,7 @@ export function computeEnding(s: GameState, kind: EndingKind): Ending {
   score += s.turn * 2;
   score += collapsed * 70;
   score += Math.round(s.israel.prestige * 1.2);
-  score += Math.round(s.israel.usRelations * 0.5);
+  score += Math.round(relationsWith(s, 'usa') * 0.5);
   score += s.palestine.homelandCreated ? 60 : 0;
   score -= Math.round(s.palestine.unrest * 8);
   score -= s.stats.nukesUsed * 150;
@@ -147,7 +148,7 @@ export function computeEnding(s: GameState, kind: EndingKind): Ending {
       survivalLine(s.turn),
       controlLine(collapsed),
       violenceLine(s.stats.actsOfViolence),
-      usLine(s.israel.usRelations),
+      usLine(relationsWith(s, 'usa')),
       `-Our Prestige ended as ${prestigeLabel(s.israel.prestige)}.`,
       `-Leadership Style: ${leadershipStyle(s)}.`,
     ],

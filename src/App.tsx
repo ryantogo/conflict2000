@@ -27,6 +27,7 @@ import {
 import { Newspaper } from './ui/Newspaper';
 import { Planning } from './ui/Planning';
 import { Budget, GameOver, Summit, Title } from './ui/Interstitials';
+import { relationsWith } from './engine/powers';
 
 /**
  * The engine mutates a single state object in place, which keeps turn
@@ -163,15 +164,15 @@ function TopBar({ s }: { s: GameState }) {
           v={
             s.israel.suppliers.usa.embargoed
               ? 'EMBARGO'
-              : s.israel.usRelations >= 70
+              : relationsWith(s, 'usa') >= 70
                 ? 'Excellent'
-                : s.israel.usRelations >= 50
+                : relationsWith(s, 'usa') >= 50
                   ? 'Good'
-                  : s.israel.usRelations >= 30
+                  : relationsWith(s, 'usa') >= 30
                     ? 'Poor'
                     : 'Sour'
           }
-          tone={s.israel.suppliers.usa.embargoed || s.israel.usRelations < 30 ? 'bad' : ''}
+          tone={s.israel.suppliers.usa.embargoed || relationsWith(s, 'usa') < 30 ? 'bad' : ''}
         />
         <Meter k="Funds" v={`$${Math.round(s.israel.funds)}M`} />
         <Meter k="Free bde" v={`${freeBrigades(s)}/${s.israel.brigades}`} />

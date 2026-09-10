@@ -14,6 +14,8 @@ import { CATALOGUE, catalogueFor, itemById } from '../data/arms2000';
 import { addUnits, countOf } from './fleet';
 import type { Origin } from '../data/equipment';
 import type { ArmsItem } from '../data/arms2000';
+import { EMBARGO_READINESS, POWER_IDS, POWER_NAMES, adjustRelations, relationsWith } from './powers';
+import type { PowerId } from './powers';
 
 export interface DealerGreeting {
   mood: string;
@@ -112,7 +114,7 @@ export function placeOrder(
   // Washington notices when you shop on the grey market.
   if (supplier === 'dealer') {
     s.israel.suppliers.usa.loyalty = clamp(s.israel.suppliers.usa.loyalty - 4, 0, 100);
-    s.israel.usRelations = clamp(s.israel.usRelations - 2, 0, 100);
+    adjustRelations(s, 'usa', -2);
   }
   return null;
 }
@@ -137,7 +139,15 @@ export function resolveDeliveries(s: GameState): string[] {
   for (const id of SUPPLIER_IDS) {
     const st = s.israel.suppliers[id];
     if (st.embargoed) continue;
-    st.loyalty = clamp(st.loyalty - 1, 0, 100);
+
+    // Commercial goodwill follows the political relationship, slowly. A sales
+    // department does not stay warm toward a government its own capital has
+    // fallen out with — these two used to be entirely independent, so an
+    // ambassador could be recalled while the arms fair carried on regardless.
+    const political = POWER_IDS.includes(id as PowerId) ? relationsWith(s, id as PowerId) : null;
+    const pull = political === null ? 0 : (political - st.loyalty) * 0.05;
+
+    st.loyalty = clamp(st.loyalty + pull - 1, 0, 100);
   }
 
   return notes;
@@ -193,28 +203,46 @@ export function resolveReadiness(s: GameState): string[] {
 }
 
 /**
- * Embargo check. The Senate moves against aggression, and Paris and London
- * follow Washington's lead. The private dealer never joins in.
+ * Would this capital refuse to sell to us today? Each decides for itself, on
+ * its own relationship and its own appetite for the argument. They used to
+ * move as one bloc: Washington embargoed and Paris and London were simply
+ * assigned the same boolean.
+ */
+function wouldEmbargo(s: GameState, id: PowerId): boolean {
+  const rel = relationsWith(s, id);
+  const readiness = EMBARGO_READINESS[id];
+
+  // Using a weapon nobody admits to having does not itself declare the
+  // embargo — the forty-five points it costs the relationship do that. What
+  // it does is raise the bar for ever afterwards, so the road back is steep
+  // rather than closed. Ordinarily thirty; after a strike, seventy.
+  const floor = s.stats.nukesUsed > 0 ? 70 : 30;
+
+  if (rel < floor * readiness) return true;
+  if (s.stats.strikesOrdered > 2 && rel < 45 * readiness) return true;
+  return false;
+}
+
+/**
+ * Embargo check, taken one capital at a time. The private dealer never joins
+ * in, because the private dealer does not read the newspapers.
  */
 export function updateEmbargoes(s: GameState): string[] {
   const notes: string[] = [];
-  const aggressive =
-    s.stats.nukesUsed > 0 ||
-    s.israel.usRelations < 30 ||
-    (s.stats.strikesOrdered > 2 && s.israel.usRelations < 45);
 
-  const usa = s.israel.suppliers.usa;
-  if (aggressive && !usa.embargoed) {
-    usa.embargoed = true;
-    s.israel.suppliers.france.embargoed = true;
-    s.israel.suppliers.britain.embargoed = true;
-    notes.push('U.S. declares arms embargo on Israel');
-  } else if (!aggressive && usa.embargoed && s.israel.usRelations > 48) {
-    usa.embargoed = false;
-    s.israel.suppliers.france.embargoed = false;
-    s.israel.suppliers.britain.embargoed = false;
-    notes.push('U.S. lift Israeli arms embargo');
+  for (const id of POWER_IDS) {
+    const supplier = s.israel.suppliers[id];
+    const wants = wouldEmbargo(s, id);
+
+    if (wants && !supplier.embargoed) {
+      supplier.embargoed = true;
+      notes.push(`${POWER_NAMES[id]} declares an arms embargo on Israel`);
+    } else if (!wants && supplier.embargoed && relationsWith(s, id) > 48 * EMBARGO_READINESS[id]) {
+      supplier.embargoed = false;
+      notes.push(`${POWER_NAMES[id]} lifts its arms embargo on Israel`);
+    }
   }
+
   return notes;
 }
 

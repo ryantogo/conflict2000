@@ -12,6 +12,7 @@ import type { GameState } from '../engine/types';
 import { clamp, pointsToRelations } from '../engine/ladders';
 import type { Rng } from '../engine/rng';
 import { expand } from './headlines';
+import { adjustRelations } from '../engine/powers';
 
 export interface ScriptedEvent {
   id: string;
@@ -127,7 +128,7 @@ export const SCRIPTED: ScriptedEvent[] = [
     month: 9,
     fire: (s) => {
       // Washington's threat perception shifts, and its patience shortens.
-      s.israel.usRelations = clamp(s.israel.usRelations + 3, 0, 100);
+      adjustRelations(s, 'usa', 3);
       return [{ text: 'U.S. destroyer bombed in Aden harbour', weight: 2 }];
     },
   },
@@ -137,7 +138,7 @@ export const SCRIPTED: ScriptedEvent[] = [
     year: 2001,
     month: 0,
     fire: (s) => {
-      s.israel.usRelations = clamp(s.israel.usRelations - 5, 0, 100);
+      adjustRelations(s, 'usa', -5);
       return [
         { text: 'Bush sworn in; White House signals step back from the process', weight: 2 },
       ];

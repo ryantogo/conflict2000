@@ -6,6 +6,8 @@
  * chosen during the turn and applied all at once when the turn resolves.
  */
 
+import type { PowerId, PowerState } from './powers';
+
 export type NationId =
   | 'egypt'
   | 'iran'
@@ -218,7 +220,7 @@ export interface Israel {
   /** 0..100 → MODERATE .. UNRIVALLED */
   prestige: number;
   /** Standing with Washington, 0..100. Drives aid and embargo risk. */
-  usRelations: number;
+  powers: Record<PowerId, PowerState>;
   /** $M per month. */
   defenceBudget: number;
   /** Funds on hand for arms purchases, $M. */
