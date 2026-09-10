@@ -35,12 +35,15 @@ jobs:
 
       - run: npm run build
 
-      # enablement: true lets the workflow turn Pages on itself, so a fresh
-      # repo deploys on the first push instead of failing until somebody
-      # enables Pages by hand.
+      # Pages has to be switched on once, out of band, before this will pass:
+      #
+      #   gh api -X POST repos/<owner>/<repo>/pages -f build_type=workflow
+      #
+      # `enablement: true` looks like it would do that automatically, but the
+      # default GITHUB_TOKEN cannot create a Pages site even with pages:write
+      # — it fails with "Resource not accessible by integration". The repo
+      # must also be public, or on a plan that allows Pages on private repos.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
