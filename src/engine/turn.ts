@@ -23,6 +23,7 @@ import { endWar, expireMandates, resolveDiplomacy } from './diplomacy';
 import { driftInternals, resolveIntelligence } from './intelligence';
 import { resolveCombat, resolveStrategic } from './military';
 import { resolveDeliveries, updateEmbargoes } from './arms';
+import { resolveProduction } from './industry';
 import { resolvePalestine } from './palestine';
 import { holocaustCheck, resolveNuclear } from './nuclear';
 import { runAi } from './ai';
@@ -67,6 +68,9 @@ export function resolveTurn(s: GameState): GameState {
     resolveDeliveries(s).map((t) => ({ text: t, weight: 0 })),
     'economy',
   );
+
+  // Our own factories deliver alongside the imports.
+  events.push(...resolveProduction(s));
 
   // 2. The player's own directives.
   push(

@@ -31,6 +31,12 @@ export {
   enemyStrength,
 } from './military';
 export {
+  industryReport,
+  industrySpend,
+  setProduction,
+} from './industry';
+export type { LineStatus } from './industry';
+export {
   greet,
   availableFrom,
   placeOrder,

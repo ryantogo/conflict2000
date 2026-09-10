@@ -15,6 +15,7 @@
 
 import { CATALOGUE } from './arms2000';
 import { IN_SERVICE } from './inventory2000';
+import { DOMESTIC_EQUIPMENT } from './domestic2000';
 
 export type ArmsCategory = 'tank' | 'aircraft' | 'sam' | 'helicopter' | 'surveillance';
 
@@ -58,7 +59,7 @@ export const REGIONAL_NORM: Record<ArmsCategory, number> = {
 
 const REGISTRY: Record<string, Equipment> = {};
 
-for (const item of [...CATALOGUE, ...IN_SERVICE]) {
+for (const item of [...CATALOGUE, ...IN_SERVICE, ...DOMESTIC_EQUIPMENT]) {
   REGISTRY[item.id] = {
     id: item.id,
     name: item.name,

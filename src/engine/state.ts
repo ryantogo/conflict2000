@@ -9,6 +9,7 @@ import type {
 import { FRONTS } from './types';
 import { createNations } from '../data/nations2000';
 import { israeliOpeningStock } from '../data/inventory2000';
+import { PRODUCTION_LINES } from '../data/domestic2000';
 
 export function emptyDirectives(): Directives {
   return {
@@ -39,6 +40,11 @@ function createFront(id: FrontId): Front {
 
 function createIsrael(): Israel {
   const suppliers = {} as Israel['suppliers'];
+  const production: Israel['production'] = {};
+  for (const line of PRODUCTION_LINES) {
+    // Nothing is running in June 2000. Opening a line is a decision.
+    production[line.id] = { development: line.development, running: false, delivered: 0 };
+  }
   const start: Record<SupplierId, number> = {
     // Barak is Washington's man in June 2000 and the aid pipeline is open.
     usa: 70,
@@ -70,6 +76,7 @@ function createIsrael(): Israel {
     nuclearProgress: 40,
     warheads: 4,
     suppliers,
+    production,
   };
 }
 

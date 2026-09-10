@@ -17,6 +17,7 @@ import {
   dateLine,
   freeBrigades,
   placeOrder,
+  setProduction,
   prestigeLabel,
   resolveTurn,
   startGame,
@@ -82,6 +83,12 @@ export default function App() {
       const err = placeOrder(game, supplier, itemId, qty);
       touch();
       return err;
+    },
+    // A line is standing policy, not a monthly directive: it stays open until
+    // it is closed, or until the Treasury cannot pay for it.
+    setProductionLine: (lineId: string, running: boolean) => {
+      setProduction(game, lineId, running);
+      touch();
     },
     endTurn: () => {
       resolveTurn(game);

@@ -238,6 +238,18 @@ export interface Israel {
   warheads: number;
   /** Per-supplier loyalty 0..100 and embargo state. */
   suppliers: Record<SupplierId, SupplierState>;
+  /** Our own factories, keyed by production line id. */
+  production: Record<string, ProductionState>;
+}
+
+/** A standing production line, funded until you stop funding it. */
+export interface ProductionState {
+  /** Months of development still to run before the line can open. */
+  development: number;
+  /** Whether the Treasury is currently paying for it. */
+  running: boolean;
+  /** Units delivered to date, for the review screens. */
+  delivered: number;
 }
 
 export interface SupplierState {

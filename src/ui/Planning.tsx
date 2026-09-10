@@ -37,6 +37,7 @@ export interface PlanningHandlers {
   setPolicing: (d: PolicingDirective) => void;
   setFundNuclear: (v: boolean) => void;
   order: (supplier: SupplierId, itemId: string, qty: number) => string | null;
+  setProductionLine: (lineId: string, running: boolean) => void;
   endTurn: () => void;
 }
 
@@ -71,7 +72,9 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
         <ForeignOffice s={s} setDiplomatic={h.setDiplomatic} setIntel={h.setIntel} />
       )}
       {tab === 'strategic' && <Strategic s={s} setStrategic={h.setStrategic} />}
-      {tab === 'arms' && <Procurement s={s} onOrder={h.order} />}
+      {tab === 'arms' && (
+        <Procurement s={s} onOrder={h.order} onProduction={h.setProductionLine} />
+      )}
       {tab === 'review' && <Review s={s} />}
       {tab === 'domestic' && (
         <Domestic s={s} setPolicing={h.setPolicing} setFundNuclear={h.setFundNuclear} />

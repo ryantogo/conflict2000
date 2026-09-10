@@ -1,21 +1,33 @@
 import { useState } from 'react';
 import type { GameState, SupplierId } from '../engine';
-import { SUPPLIER_IDS, availableFrom, greet, inTransit, procurementAdvice } from '../engine';
+import {
+  SUPPLIER_IDS,
+  availableFrom,
+  greet,
+  industryReport,
+  industrySpend,
+  inTransit,
+  procurementAdvice,
+} from '../engine';
 import { SUPPLIERS } from '../data/arms2000';
 import { Panel, Row } from './bits';
 
 export function Procurement({
   s,
   onOrder,
+  onProduction,
 }: {
   s: GameState;
   onOrder: (supplier: SupplierId, itemId: string, qty: number) => string | null;
+  onProduction: (lineId: string, running: boolean) => void;
 }) {
   const [supplier, setSupplier] = useState<SupplierId>('usa');
   const [qty, setQty] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const greeting = greet(s, supplier);
+  const lines = industryReport(s);
+  const committed = industrySpend(s);
   const items = availableFrom(s, supplier);
   const transit = inTransit(s);
 
@@ -31,6 +43,40 @@ export function Procurement({
           <p className="small dim" style={{ marginTop: 12, marginBottom: 0 }}>
             {procurementAdvice(s)}
           </p>
+        </Panel>
+
+        <Panel
+          title="Our own industry"
+          right={
+            committed > 0 ? <span className="mono small">${committed} M / month</span> : undefined
+          }
+        >
+          <p className="small faint" style={{ marginTop: 0 }}>
+            Dearer per unit than importing, and nobody else gets a veto over it.
+          </p>
+          <div className="choices">
+            {lines.map((l) => (
+              <button
+                key={l.id}
+                className={`choice${l.running ? ' selected' : ''}`}
+                onClick={() => onProduction(l.id, !l.running)}
+              >
+                <span className="tick">{l.running ? '▸' : ''}</span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                    <span>{l.name}</span>
+                    <span className="mono small faint">
+                      ${l.cost} M/mo
+                      {l.delivered > 0 ? ` · ${l.delivered} built` : ''}
+                    </span>
+                  </span>
+                  <span className="why" style={{ fontStyle: 'normal' }}>
+                    {l.status}. {l.description}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
         </Panel>
 
         <Panel title="Suppliers">
