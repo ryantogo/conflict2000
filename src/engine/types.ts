@@ -230,8 +230,15 @@ export interface Israel {
   reserves: number;
   /** Undeployed equipment pool. */
   stockpile: Forces;
-  /** 0..100 domestic standing. Falls to zero and the Knesset removes you. */
+  /**
+   * 0..100 public standing. What the country thinks of you, which is not the
+   * same question as whether you can still pass a budget — see `coalition`.
+   */
   popularity: number;
+  /** Where each Knesset party stands, keyed by partner id. */
+  coalition: Record<string, { satisfaction: number; inCoalition: boolean }>;
+  /** Set the month a no-confidence motion carries. Ends the game. */
+  lostConfidence: boolean;
   nuclearPosture: NuclearPosture;
   /** 0..100 toward the next posture step. */
   nuclearProgress: number;

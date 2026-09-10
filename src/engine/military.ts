@@ -24,6 +24,7 @@ import {
 import { clamp } from './ladders';
 import { canInvade } from './diplomacy';
 import { collapseGovernment } from './intelligence';
+import { coalitionMood, coalitionReact } from './coalition';
 import { freeBrigades } from './state';
 import type { Rng } from './rng';
 import {
@@ -343,6 +344,7 @@ export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
         s.tension = clamp(s.tension + 18, 0, 100);
         s.israel.prestige = clamp(s.israel.prestige + 2, 0, 100);
         s.israel.usRelations = clamp(s.israel.usRelations - 12, 0, 100);
+        coalitionReact(s, 'hawkish', 12);
         events.push({
           text: expand(rng.pick(WAR_DECLARED), ctx),
           category: 'war',
@@ -620,6 +622,8 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
       });
       s.israel.popularity = clamp(s.israel.popularity - 12, 0, 100);
       s.israel.prestige = clamp(s.israel.prestige - 8, 0, 100);
+      // A line about to break unites the House against the man who let it.
+      coalitionMood(s, -6);
     } else {
       front.collapseMonths = 0;
     }

@@ -13,6 +13,7 @@
 import type { GameState, PolicingDirective } from './types';
 import { clamp } from './ladders';
 import { freeBrigades } from './state';
+import { coalitionReact } from './coalition';
 import type { Rng } from './rng';
 import { PALESTINE, expand } from '../data/headlines';
 
@@ -105,6 +106,8 @@ export function resolvePalestine(s: GameState, rng: Rng): PalestineEvent[] {
   if (p.tactics === 'hard' && p.brigadesPosted > 0) {
     s.israel.prestige = clamp(s.israel.prestige - 1, 0, 100);
     s.israel.usRelations = clamp(s.israel.usRelations - 1, 0, 100);
+    // The right approves of a firm hand and the left does not, month on month.
+    coalitionReact(s, 'hawkish', 2.5);
     // And they radicalise: suppression now, worse later.
     if (rng.chance(0.3)) delta += 0.6;
   }

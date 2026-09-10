@@ -28,6 +28,7 @@ import { resolvePalestine } from './palestine';
 import { holocaustCheck, resolveNuclear } from './nuclear';
 import { runAi } from './ai';
 import { runRearmament } from './procurement';
+import { coalitionReact, coalitionSeats, resolveCoalition } from './coalition';
 import { runScripted } from '../data/scripted';
 import { FILLER } from '../data/headlines';
 import { MASTHEADS } from '../data/nations2000';
@@ -104,6 +105,9 @@ export function resolveTurn(s: GameState): GameState {
     resolveReadiness(s).map((t) => ({ text: t, weight: 1 })),
     'economy',
   );
+  // The Knesset gets the last word, after everything that might have
+  // offended it has already happened.
+  events.push(...resolveCoalition(s, rng));
   updateMeters(s, rng);
 
   // 6. Advance the calendar.
@@ -291,6 +295,15 @@ function buildBriefing(s: GameState): string[] {
   if (isr.popularity < 30)
     out.push('The Israeli people have little confidence in your abilities.');
   if (isr.popularity < 18) out.push('The Knesset is trying to remove you.');
+  const seats = coalitionSeats(s);
+  if (seats < 61) {
+    out.push(
+      `You are governing without a majority — ${seats} of 120. ` +
+        'Every month is a motion of no confidence waiting to be tabled.',
+    );
+  } else if (seats < 68) {
+    out.push(`The coalition holds ${seats} of 120. It would not survive many more walkouts.`);
+  }
   if (isr.suppliers.usa.embargoed)
     out.push('The U.S. have officially stopped arms trade with us.');
   else if (isr.usRelations < 45)
@@ -521,8 +534,10 @@ export function applySummit(
         s.israel.prestige = clamp(s.israel.prestige + 14, 0, 100);
         s.israel.usRelations = clamp(s.israel.usRelations + 18, 0, 100);
         s.tension = clamp(s.tension - 15, 0, 100);
-        // The right will never forgive it.
+        // The right will never forgive it, and this is where a government
+        // assembled out of Meretz and the NRP discovers it cannot hold both.
         s.israel.popularity = clamp(s.israel.popularity - 14, 0, 100);
+        coalitionReact(s, 'territorial', 40);
         for (const n of Object.values(s.nations)) {
           if (!n.collapsed) n.relationsPoints = clamp(n.relationsPoints + 22, -100, 100);
         }
@@ -530,8 +545,9 @@ export function applySummit(
       } else {
         s.israel.usRelations = clamp(s.israel.usRelations - 8, 0, 100);
         s.palestine.unrest = clamp(s.palestine.unrest + 1.5, 0, 10);
-        // At home, refusing plays well.
+        // At home, refusing plays well — with exactly half the government.
         s.israel.popularity = clamp(s.israel.popularity + 6, 0, 100);
+        coalitionReact(s, 'territorial', -12);
         // A collapsed final-status summit is what the autumn was made of.
         // Remember it, so September has a reason to catch fire.
         if (s.year === 2000 && !s.firedEvents.includes('camp-david-refused')) {
@@ -602,13 +618,15 @@ export function applyBudget(
   if (spending === 'increase') {
     s.israel.defenceBudget = Math.round(s.israel.defenceBudget * 1.2);
     s.israel.gnpPercent = Math.round((s.israel.gnpPercent + 1.4) * 10) / 10;
-    // Guns crowd out butter.
+    // Guns crowd out butter, and Shas is in this government for the butter.
     s.israel.popularity = clamp(s.israel.popularity - 4, 0, 100);
+    coalitionReact(s, 'welfare', -14);
     notes.push('Defence spending increased. The economy will feel it.');
   } else if (spending === 'decrease') {
     s.israel.defenceBudget = Math.round(s.israel.defenceBudget * 0.85);
     s.israel.gnpPercent = Math.max(1, Math.round((s.israel.gnpPercent - 1.2) * 10) / 10);
     s.israel.popularity = clamp(s.israel.popularity + 3, 0, 100);
+    coalitionReact(s, 'welfare', 10);
     notes.push('Defence spending reduced.');
   }
 
@@ -647,7 +665,10 @@ function checkEndings(s: GameState, rng: Rng) {
     return computeEnding(s, 'invaded');
   }
 
-  // Removed from office.
+  // Removed from office — by the House, or by the country.
+  if (s.israel.lostConfidence) {
+    return computeEnding(s, 'removed_by_knesset');
+  }
   if (s.israel.popularity <= 0) {
     return computeEnding(s, rng.chance(0.25) ? 'assassinated' : 'removed_by_knesset');
   }

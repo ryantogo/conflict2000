@@ -29,7 +29,7 @@ import type { FrontId, GameState } from './index';
  * The point of this test is not that the bot is good. It is that the victory
  * condition is reachable at all, and that deliberate play beats passivity.
  */
-function playStrategist(seed: number): GameState {
+function playStrategist(seed: number, concedeHomeland = true): GameState {
   const g = createGame(seed);
   startGame(g);
 
@@ -43,8 +43,9 @@ function playStrategist(seed: number): GameState {
     if (g.phase === 'summit') {
       const decisions: Record<string, boolean> = {};
       for (const p of summitProposals(g)) {
-        // Take the ceasefires and the homeland; refuse to cap the army.
-        decisions[p.id] = p.id !== 'armscap';
+        // Take the ceasefires; refuse to cap the army. The homeland is the
+        // one question this campaign is not obviously consistent about.
+        decisions[p.id] = p.id === 'homeland' ? concedeHomeland : p.id !== 'armscap';
       }
       applySummit(g, decisions);
       continue;
@@ -120,6 +121,38 @@ function playStrategist(seed: number): GameState {
   }
   return g;
 }
+
+describe('political coherence', () => {
+  const N = 80;
+
+  it('leaves no good answer to Camp David', () => {
+    // The same campaign, differing only on the one question the coalition was
+    // assembled around, and both answers cost a government.
+    //
+    // Conceding loses the religious right — Shas, the National Religious Party
+    // and Yisrael BaAliyah — and hands you a minority to govern with. Refusing
+    // keeps them, and loses Meretz, and sets the territories alight in
+    // September, which is worse. This was written expecting the opposite and
+    // the harness said otherwise: the Palestinian track punishes refusal
+    // considerably harder than the coalition punishes concession.
+    const concedes = Array.from({ length: N }, (_, i) => playStrategist(i + 1, true));
+    const refuses = Array.from({ length: N }, (_, i) => playStrategist(i + 1, false));
+
+    const wins = (gs: GameState[]) => gs.filter((g) => g.ending?.kind === 'victory').length;
+    const knesset = (gs: GameState[]) =>
+      gs.filter((g) => g.ending?.kind === 'removed_by_knesset').length;
+
+    // eslint-disable-next-line no-console
+    console.log('Camp David:', {
+      concedes: { victory: wins(concedes), removed: knesset(concedes) },
+      refuses: { victory: wins(refuses), removed: knesset(refuses) },
+    });
+
+    // Both answers cost governments; refusal costs more of them.
+    expect(knesset(concedes)).toBeGreaterThan(N / 4);
+    expect(knesset(refuses)).toBeGreaterThan(knesset(concedes));
+  });
+});
 
 describe('a competent strategy', () => {
   const N = 80;

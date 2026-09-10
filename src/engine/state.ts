@@ -11,6 +11,7 @@ import { createNations } from '../data/nations2000';
 import { israeliOpeningStock } from '../data/inventory2000';
 import { PRODUCTION_LINES } from '../data/domestic2000';
 import { ORIGINS } from '../data/equipment';
+import { createCoalition } from './coalition';
 
 export function emptyDirectives(): Directives {
   return {
@@ -73,6 +74,8 @@ function createIsrael(): Israel {
     stockpile: { brigades: 0, equipment: israeliOpeningStock() },
     // A narrow coalition that historically fell apart before Camp David.
     popularity: 47,
+    coalition: createCoalition(),
+    lostConfidence: false,
     nuclearPosture: 'opacity',
     nuclearProgress: 40,
     warheads: 4,

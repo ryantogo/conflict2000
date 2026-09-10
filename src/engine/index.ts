@@ -34,6 +34,13 @@ export {
   enemyStrength,
 } from './military';
 export {
+  MAJORITY,
+  coalitionReport,
+  coalitionSeats,
+  hasMajority,
+} from './coalition';
+export type { PartnerStatus } from './coalition';
+export {
   industryReport,
   industrySpend,
   setProduction,
