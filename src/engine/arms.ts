@@ -124,10 +124,7 @@ export function resolveDeliveries(s: GameState): string[] {
   for (const o of arrived) {
     const item = itemById(o.itemId);
     if (!item) continue;
-    const pool = poolFor(item.category);
-    if (pool === 'tanks') s.israel.stockpile.tanks += o.quantity;
-    else if (pool === 'sam') s.israel.stockpile.sam += o.quantity;
-    else s.israel.stockpile.aircraft += o.quantity;
+    s.israel.stockpile[poolFor(item.category)] += o.quantity;
     notes.push(`Delivered: ${o.quantity} x ${item.name}.`);
   }
 
@@ -176,10 +173,13 @@ export function procurementAdvice(s: GameState): string {
       ? 'Due to the possibility of conflict in the near future,'
       : 'For a more balanced attack force,';
 
-  if (st.aircraft < 250) return `${prefix} we may require some Strike Aircraft.`;
+  if (st.aircraft < 200) return `${prefix} we may require some Strike Aircraft.`;
   if (st.sam < 60) return `${prefix} the purchase of more SAM systems may be prudent.`;
   if (st.tanks < 2000) return `${prefix} we should obtain more Battlefield Systems.`;
-  return 'We advise you to purchase an early warning surveillance craft.';
+  if (st.helicopters < 60)
+    return `${prefix} the ground forces want more attack helicopters over them.`;
+  if (st.awacs < 3) return 'We advise you to purchase an early warning surveillance craft.';
+  return 'The order of battle is balanced. We have nothing pressing to ask for.';
 }
 
 /** Everything currently in transit, for the Review screen. */

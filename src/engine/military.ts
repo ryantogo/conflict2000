@@ -7,8 +7,8 @@
  * player only as a bar and a sentence from the front-line commander.
  */
 
-import type { Forces, FrontId, GameState, NationId, StrategicDirective } from './types';
-import { FRONTS } from './types';
+import type { Forces, Front, FrontId, GameState, NationId, StrategicDirective } from './types';
+import { FRONTS, airUnits } from './types';
 import { clamp } from './ladders';
 import { canInvade } from './diplomacy';
 import { freeBrigades } from './state';
@@ -36,6 +36,31 @@ const STRIKE_LABELS: Record<string, string> = {
   strike_civilian: 'Tactical airstrike on civilian target',
   strike_nuclear: 'Tactical airstrike on nuclear installation',
 };
+
+/**
+ * Is anything of ours still standing on this border? Equipment can outlive the
+ * brigades it came with, so this asks about the whole column, not just troops.
+ */
+function forcesOnFront(front: Front): boolean {
+  const d = front.deployed;
+  return d.brigades > 0 || d.tanks > 0 || airUnits(d) > 0 || d.sam > 0;
+}
+
+/**
+ * Bringing the column home. Offered wherever there is something to bring home
+ * and no battle to lose by leaving — after a war has ended, above all, which
+ * is the one case where the rest of the menu has nothing left on it.
+ */
+function withdrawalOptions(front: Front): StrategicOption[] {
+  if (!forcesOnFront(front)) return [];
+  const opts: StrategicOption[] = [
+    { id: 'withdraw', label: 'Withdraw all forces and return them to reserve' },
+  ];
+  if (front.deployed.brigades > 1) {
+    opts.push({ id: 'withdraw_brigade', label: 'Withdraw single brigade' });
+  }
+  return opts;
+}
 
 export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
   const n = s.nations[id];
@@ -65,7 +90,7 @@ export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
     opts.push({
       id: 'deploy_air',
       label: 'Increase air cover',
-      ...(s.israel.stockpile.aircraft < 20
+      ...(s.israel.stockpile.aircraft + s.israel.stockpile.helicopters < 20
         ? { disabledReason: 'No squadrons can be spared.' }
         : {}),
     });
@@ -78,16 +103,22 @@ export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
     return opts;
   }
 
+  // There is no state left to act against, but our army is still sitting on
+  // its border. Getting it home is the only order that still means anything.
   if (n.collapsed) {
-    return [{ id: 'none', label: 'Take no action', disabledReason: `${n.name} has no government.` }];
+    const home = withdrawalOptions(front);
+    if (home.length === 0) {
+      return [
+        { id: 'none', label: 'Take no action', disabledReason: `${n.name} has no government.` },
+      ];
+    }
+    return [...home, { id: 'none', label: 'Hold the present positions' }];
   }
 
   if (front.demilitarised) {
+    const home = withdrawalOptions(front);
     return [
-      {
-        id: 'withdraw',
-        label: 'Immediate withdrawal of forces',
-      },
+      ...home,
       {
         id: 'none',
         label: 'Take no action',
@@ -145,7 +176,9 @@ export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
     ...(inv.ok ? {} : { disabledReason: inv.reason ?? 'Not possible.' }),
   });
 
-  if (front.deployed.brigades > 0) {
+  // Keyed on the whole column, not just brigades: a front that has lost its
+  // infantry can still be holding tanks, aircraft and batteries.
+  if (forcesOnFront(front)) {
     opts.push({ id: 'withdraw', label: 'Immediate withdrawal of forces' });
     opts.push({ id: 'defensive', label: 'Hold position and deploy for defensive campaign' });
   }
@@ -197,6 +230,16 @@ function moveFromStockpile(s: GameState, front: FrontId, want: Partial<Forces>):
     st.aircraft -= n;
     dep.aircraft += n;
   }
+  if (want.helicopters) {
+    const n = Math.min(want.helicopters, st.helicopters);
+    st.helicopters -= n;
+    dep.helicopters += n;
+  }
+  if (want.awacs) {
+    const n = Math.min(want.awacs, st.awacs);
+    st.awacs -= n;
+    dep.awacs += n;
+  }
   if (want.sam) {
     const n = Math.min(want.sam, st.sam);
     st.sam -= n;
@@ -210,14 +253,20 @@ function returnToStockpile(s: GameState, front: FrontId, all: boolean): void {
   const frac = all ? 1 : 0.34;
   const t = Math.floor(dep.tanks * frac);
   const a = Math.floor(dep.aircraft * frac);
+  const h = Math.floor(dep.helicopters * frac);
+  const e = Math.floor(dep.awacs * frac);
   const m = Math.floor(dep.sam * frac);
   const b = all ? dep.brigades : Math.min(1, dep.brigades);
   dep.tanks -= t;
   dep.aircraft -= a;
+  dep.helicopters -= h;
+  dep.awacs -= e;
   dep.sam -= m;
   dep.brigades -= b;
   st.tanks += t;
   st.aircraft += a;
+  st.helicopters += h;
+  st.awacs += e;
   st.sam += m;
 }
 
@@ -239,22 +288,35 @@ export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
         break;
 
       case 'full_deployment':
-        moveFromStockpile(s, id, { brigades: 2, tanks: 400, aircraft: 40, sam: 10 });
+        moveFromStockpile(s, id, { brigades: 2, tanks: 400, aircraft: 32, helicopters: 8, sam: 10 });
         n.relationsPoints = clamp(n.relationsPoints - 14, -100, 100);
         s.tension = clamp(s.tension + 4, 0, 100);
         break;
 
       case 'max_deployment':
-        moveFromStockpile(s, id, { brigades: 3, tanks: 700, aircraft: 80, sam: 16 });
+        moveFromStockpile(s, id, { brigades: 3, tanks: 700, aircraft: 64, helicopters: 16, sam: 16 });
         n.relationsPoints = clamp(n.relationsPoints - 20, -100, 100);
         s.tension = clamp(s.tension + 7, 0, 100);
         break;
 
-      case 'withdraw':
+      case 'withdraw': {
+        const wasHolding = forcesOnFront(front);
         returnToStockpile(s, id, true);
-        n.relationsPoints = clamp(n.relationsPoints + 8, -100, 100);
+        front.territoryHeld = false;
+        // A gesture only reads as one if there is a government left to read it.
+        if (!n.collapsed) {
+          n.relationsPoints = clamp(n.relationsPoints + 8, -100, 100);
+        }
         s.tension = clamp(s.tension - 3, 0, 100);
+        if (wasHolding) {
+          events.push({
+            text: `Israeli forces withdraw from the ${n.adjective} border`,
+            category: 'war',
+            weight: 1,
+          });
+        }
         break;
+      }
 
       case 'defensive':
         front.warProgress = clamp(front.warProgress + 4, -100, 100);
@@ -300,13 +362,15 @@ export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
         moveFromStockpile(s, id, { sam: 5 });
         break;
       case 'deploy_air':
-        moveFromStockpile(s, id, { aircraft: 20 });
+        moveFromStockpile(s, id, { aircraft: 16, helicopters: 4 });
         break;
       case 'deploy_all':
         moveFromStockpile(s, id, {
           brigades: freeBrigades(s),
           tanks: s.israel.stockpile.tanks,
           aircraft: s.israel.stockpile.aircraft,
+          helicopters: s.israel.stockpile.helicopters,
+          awacs: s.israel.stockpile.awacs,
           sam: s.israel.stockpile.sam,
         });
         break;
@@ -435,13 +499,13 @@ function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEven
 /** Total combat weight Israel has on one front. */
 export function israeliStrength(s: GameState, id: FrontId): number {
   const d = s.fronts[id].deployed;
-  return d.brigades * 100 + d.tanks * 0.09 + d.aircraft * 0.5 + d.sam * 1.2;
+  return d.brigades * 100 + d.tanks * 0.09 + airUnits(d) * 0.5 + d.sam * 1.2;
 }
 
 /** Total combat weight the defender can bring to that front. */
 export function enemyStrength(s: GameState, id: FrontId): number {
   const n = s.nations[id];
-  let base = n.forces.brigades * 78 + n.forces.tanks * 0.06 + n.forces.aircraft * 0.35;
+  let base = n.forces.brigades * 78 + n.forces.tanks * 0.06 + airUnits(n.forces) * 0.35;
   base += n.forces.sam * 1.0;
   // A regime falling apart cannot fight well.
   base *= 0.5 + (n.stability / 100) * 0.7;
@@ -473,14 +537,20 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
       const brigades = Math.min(2, spare);
       const tanks = Math.floor(st.tanks * 0.35);
       const aircraft = Math.floor(st.aircraft * 0.35);
+      const helicopters = Math.floor(st.helicopters * 0.35);
+      const awacs = Math.floor(st.awacs * 0.35);
       const sam = Math.floor(st.sam * 0.35);
       if (brigades > 0 || tanks > 0) {
         front.deployed.brigades += brigades;
         front.deployed.tanks += tanks;
         front.deployed.aircraft += aircraft;
+        front.deployed.helicopters += helicopters;
+        front.deployed.awacs += awacs;
         front.deployed.sam += sam;
         st.tanks -= tanks;
         st.aircraft -= aircraft;
+        st.helicopters -= helicopters;
+        st.awacs -= awacs;
         st.sam -= sam;
         events.push({
           text: `Reserve mobilised as ${n.adjective} forces press the border`,
@@ -506,6 +576,11 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
       0,
       Math.floor(front.deployed.aircraft * (1 - ourLossRate * 0.5)),
     );
+    front.deployed.helicopters = Math.max(
+      0,
+      Math.floor(front.deployed.helicopters * (1 - ourLossRate * 0.5)),
+    );
+    // Early warning craft orbit well behind the line and are not shot down.
     n.forces.tanks = Math.max(0, Math.floor(n.forces.tanks * (1 - theirLossRate)));
     n.forces.aircraft = Math.max(
       0,

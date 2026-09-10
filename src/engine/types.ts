@@ -109,8 +109,23 @@ export interface PurchaseOrder {
 export interface Forces {
   brigades: number;
   tanks: number;
+  /** Fixed-wing combat aircraft. */
   aircraft: number;
+  /**
+   * Attack helicopters. Split out of `aircraft` because the player buys them
+   * as their own line in the catalogue and expects to see them counted.
+   * Arab air power stays a single aggregate in `aircraft`, so these are 0
+   * for every nation.
+   */
+  helicopters: number;
+  /** Airborne early warning and surveillance craft. Same reasoning. */
+  awacs: number;
   sam: number;
+}
+
+/** Every air arm Israel tracks, as one number. All weigh the same in combat. */
+export function airUnits(f: Forces): number {
+  return f.aircraft + f.helicopters + f.awacs;
 }
 
 export interface Nation {

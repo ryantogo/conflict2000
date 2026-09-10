@@ -23,7 +23,7 @@ export function emptyDirectives(): Directives {
 function createFront(id: FrontId): Front {
   return {
     id,
-    deployed: { brigades: 0, tanks: 0, aircraft: 0, sam: 0 },
+    deployed: { brigades: 0, tanks: 0, aircraft: 0, helicopters: 0, awacs: 0, sam: 0 },
     enemyActivity: 0,
     atWar: false,
     warMonths: 0,
@@ -58,7 +58,11 @@ function createIsrael(): Israel {
     gnpPercent: 8.6,
     brigades: 7,
     reserves: 430,
-    stockpile: { brigades: 0, tanks: 3900, aircraft: 450, sam: 110 },
+    // The 450-strong air arm of the original, broken out the way the player
+    // buys it: roughly the June 2000 IAF — combat aircraft, an attack
+    // helicopter force, and a handful of early warning craft. The total is
+    // unchanged, so the opening balance of power is exactly as it was.
+    stockpile: { brigades: 0, tanks: 3900, aircraft: 357, helicopters: 90, awacs: 3, sam: 110 },
     // A narrow coalition that historically fell apart before Camp David.
     popularity: 47,
     nuclearPosture: 'opacity',

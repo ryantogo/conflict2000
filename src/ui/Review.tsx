@@ -5,6 +5,22 @@ import { Panel, Row, WarBar } from './bits';
 export function Review({ s }: { s: GameState }) {
   const isr = s.israel;
 
+  // What is standing on the borders, added up across all four fronts.
+  const forward = FRONTS.reduce(
+    (a, id) => {
+      const d = s.fronts[id].deployed;
+      return {
+        brigades: a.brigades + d.brigades,
+        tanks: a.tanks + d.tanks,
+        aircraft: a.aircraft + d.aircraft,
+        helicopters: a.helicopters + d.helicopters,
+        awacs: a.awacs + d.awacs,
+        sam: a.sam + d.sam,
+      };
+    },
+    { brigades: 0, tanks: 0, aircraft: 0, helicopters: 0, awacs: 0, sam: 0 },
+  );
+
   return (
     <div className="grid2">
       <Panel title="Battlefield forces undeployed">
@@ -12,9 +28,26 @@ export function Review({ s }: { s: GameState }) {
           <Row label="Brigades free" value={`${freeBrigades(s)} of ${isr.brigades}`} />
           <Row label="Reserves" value={`${isr.reserves} thousand`} tone={isr.reserves < 100 ? 'red' : ''} />
           <Row label="Tanks in reserve" value={isr.stockpile.tanks.toLocaleString()} />
-          <Row label="Aircraft in reserve" value={isr.stockpile.aircraft.toLocaleString()} />
+          <Row label="Combat aircraft in reserve" value={isr.stockpile.aircraft.toLocaleString()} />
+          <Row
+            label="Attack helicopters in reserve"
+            value={isr.stockpile.helicopters.toLocaleString()}
+          />
+          <Row label="Early warning aircraft" value={isr.stockpile.awacs} />
           <Row label="SAM batteries in reserve" value={isr.stockpile.sam} />
           <Row label="Nuclear devices" value={isr.warheads} tone="amber" />
+        </div>
+
+        <div className="kicker" style={{ marginTop: 18 }}>
+          Committed to the borders
+        </div>
+        <div className="rows">
+          <Row label="Brigades deployed" value={forward.brigades} />
+          <Row label="Tanks deployed" value={forward.tanks.toLocaleString()} />
+          <Row label="Combat aircraft on station" value={forward.aircraft.toLocaleString()} />
+          <Row label="Attack helicopters on station" value={forward.helicopters.toLocaleString()} />
+          <Row label="Early warning aircraft on station" value={forward.awacs} />
+          <Row label="SAM batteries deployed" value={forward.sam} />
         </div>
 
         <div className="kicker" style={{ marginTop: 18 }}>
@@ -40,7 +73,8 @@ export function Review({ s }: { s: GameState }) {
                   <strong>{n.name}</strong>
                   <span className="mono small faint">
                     {f.deployed.brigades} bde · {f.deployed.tanks.toLocaleString()} tk ·{' '}
-                    {f.deployed.aircraft} ac
+                    {f.deployed.aircraft} ac · {f.deployed.helicopters} hel ·{' '}
+                    {f.deployed.awacs} awc · {f.deployed.sam} sam
                   </span>
                 </div>
                 <div className="small dim" style={{ marginBottom: 6 }}>

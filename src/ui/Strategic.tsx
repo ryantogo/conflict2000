@@ -77,7 +77,9 @@ export function Strategic({
           <div className="rows">
             <Row label="Brigades deployed" value={front.deployed.brigades} />
             <Row label="Tanks deployed" value={front.deployed.tanks.toLocaleString()} />
-            <Row label="Aircraft on station" value={front.deployed.aircraft} />
+            <Row label="Combat aircraft on station" value={front.deployed.aircraft} />
+            <Row label="Attack helicopters on station" value={front.deployed.helicopters} />
+            <Row label="Early warning aircraft on station" value={front.deployed.awacs} />
             <Row label="SAM batteries" value={front.deployed.sam} />
             <Row
               label="Our combat weight"

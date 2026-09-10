@@ -289,15 +289,19 @@ export function itemById(id: string): ArmsItem | undefined {
 }
 
 /** Which force pool an item lands in when it is delivered. */
-export function poolFor(cat: ArmsCategory): 'tanks' | 'aircraft' | 'sam' {
+export function poolFor(
+  cat: ArmsCategory,
+): 'tanks' | 'aircraft' | 'helicopters' | 'awacs' | 'sam' {
   switch (cat) {
     case 'tank':
       return 'tanks';
     case 'sam':
       return 'sam';
     case 'aircraft':
-    case 'helicopter':
-    case 'surveillance':
       return 'aircraft';
+    case 'helicopter':
+      return 'helicopters';
+    case 'surveillance':
+      return 'awacs';
   }
 }
