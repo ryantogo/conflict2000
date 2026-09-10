@@ -490,7 +490,7 @@ export function applySummit(
       s.firedEvents.push('camp-david-refused');
     }
     notes.push('Israel did not attend the summit. The chair stayed empty.');
-    for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} - ${n}`);
+    for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} — ${n}`);
     s.phase = 'planning';
     return notes;
   }
@@ -554,7 +554,7 @@ export function applySummit(
     }
   }
 
-  for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} - ${n}`);
+  for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} — ${n}`);
   s.phase = 'planning';
   return notes;
 }
@@ -620,7 +620,7 @@ export function applyBudget(
     notes.push('Two further brigades — 40,000 combat soldiers — have been raised.');
   }
 
-  for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} - ${n}`);
+  for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} — ${n}`);
   s.phase = 'planning';
   return notes;
 }

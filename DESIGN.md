@@ -161,9 +161,9 @@ Where it landed. Passive players run 120 games each, the strategist 80:
 
 | player | victory | survived decade | invaded | removed or killed |
 | --- | --- | --- | --- | --- |
-| passive, signs everything | 0% | 57% | 42% | 2% |
+| passive, signs everything | 0% | 52% | 46% | 2% |
 | passive, refuses everything | 0% | 0% | 0% | 100% |
-| disciplined strategist | 27% | 8% | 19% | 46% |
+| disciplined strategist | 26% | 9% | 24% | 41% |
 
 Signing at Camp David and then doing nothing survives the decade more often
 than not, and never wins. Refusing and then doing nothing loses every single
@@ -186,7 +186,65 @@ is the game.
 
 ---
 
-## 4. The map
+## 4. Hardware
+
+The original counted tanks. So did this, at first: `Israel.stockpile` was a bag
+of scalars, a delivery did `stockpile.tanks += quantity`, and an M1A2 Abrams and
+a T-72M both simply incremented the same number. The catalogue had carried a
+`power` field on all nineteen entries since the first commit — Abrams 12,
+Challenger 2 11, AMX-30 8, T-72M 7 — and nothing anywhere read it, because
+nothing could.
+
+A force is now an inventory of named types. Counting tanks is a question you ask
+an inventory rather than a field it stores, because which tanks they are is the
+whole point. Two references do two different jobs, and confusing them was the
+first thing that went wrong:
+
+- **`COMBAT_REFERENCE`** (tank 8, air 20, sam 10) is the hinge that keeps the
+  arithmetic compatible with the flat-count model. A unit of exactly this power
+  is worth what any unit of its category used to be worth, so the June 2000
+  opening position is unchanged.
+- **`REGIONAL_NORM`** (tank 6, aircraft 13, …) is what a typical unit *on these
+  borders* looks like, and is used only to turn a fleet's mean power into a
+  word. Most armour in the region is a T-55 or a Type 59, and it is measuring
+  the Merkava against that which makes "modern" mean something. The first
+  attempt graded Israel against its own average and reported, inevitably, that
+  Israel was average.
+
+The compositions are not flattering to anybody. Syria fields 4,500 tanks to
+Israel's 3,900 and a third less weight, because 2,000 of them are T-55s. Egypt
+is the only Arab army buying American and grades out well above its neighbours.
+Israeli armour runs from Merkava Mk 3 down to captured Tiran 5s.
+
+Three things follow from having types at all, and none of them was possible
+before:
+
+**The neighbours rearm.** `Nation.forces` used to move in one direction only —
+attrition, strikes, nukes, inter-Arab wars — and nothing ever put a unit back,
+so a patient premier could win by outlasting everybody. Reconstitution is driven
+by the size of the hole rather than a flat trickle: an army knocked to half
+strength is roughly two thirds of the way back inside two years, and it replaces
+losses with the best it can get, so a fleet modernises as it heals. Access is
+political rather than economic — Cairo has an American production line, Baghdad
+is ten years into sanctions cannibalising airframes for spares.
+
+**We build our own.** A production line is the only source of equipment nobody
+else has a veto over, which is why it is priced worse per unit than importing.
+It is standing policy rather than a monthly order: it bills the Treasury every
+month until it is closed, and the Mk 4 programme bills for thirty of them before
+the first tank exists.
+
+**An embargo grounds aircraft.** It stops the spares, not the tanks.
+Serviceability for the affected origin decays to a floor of 55% and recovers
+when parts flow again; grounded airframes stay on the inventory and are worth
+nothing at all on the day. The floor is as deliberate as the rate — an embargo
+must hurt for years without being simply fatal. The opening Israeli order of
+battle is heavily American, so this bites hard, and it is what finally makes the
+domestic lines an argument rather than a flourish.
+
+---
+
+## 5. The map
 
 The original shipped six EGA maps as run-length scanline data. Decoding them
 took three goes: the records are five bytes (colour, x16, y16), each starting a
@@ -237,7 +295,7 @@ Live state is drawn rather than described: brigade counts thicken the frontier
 they hold, wars dash it red, the territories hatch in proportion to unrest, and
 collapsed governments go grey and struck through.
 
-## 5. Deliberate omissions
+## 6. Deliberate omissions
 
 - **The original pixel art is not used.** The decoders work and the assets are
   fully recoverable (`tools/decode_assets.py`). The map borrows the original's
