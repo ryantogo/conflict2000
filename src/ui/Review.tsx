@@ -17,7 +17,10 @@ import {
   qualityLabel,
   serviceabilityLabel,
 } from '../engine';
-import { Panel, Row, WarBar } from './bits';
+import { useState } from 'react';
+import type { SubTabItem } from './bits';
+import { Panel, Row, SubTabs, WarBar } from './bits';
+import { HINTS } from '../data/hints';
 
 const ORIGIN_NAME: Record<string, string> = {
   usa: 'American-supplied',
@@ -90,7 +93,18 @@ function Arm({ title, fleet, cat }: { title: string; fleet: Fleet; cat: ArmsCate
   );
 }
 
+type ArmsView = 'armour' | 'air' | 'defence' | 'committed' | 'trade';
+
+const ARMS_VIEWS: SubTabItem<ArmsView>[] = [
+  { id: 'armour', label: 'Armour', legend: 'Every tank in reserve, by type and by how good it is.' },
+  { id: 'air', label: 'Air arm', legend: 'Combat aircraft, attack helicopters and early warning craft.' },
+  { id: 'defence', label: 'Air defence', legend: 'Surface-to-air batteries held back from the borders.' },
+  { id: 'committed', label: 'Committed', legend: 'What is already standing on the four borders.' },
+  { id: 'trade', label: 'Trade', legend: 'What we have signed for, and what it has cost.' },
+];
+
 export function Review({ s }: { s: GameState }) {
+  const [view, setView] = useState<ArmsView>('armour');
   const isr = s.israel;
 
   // What is standing on the borders, added up across all four fronts.
@@ -103,47 +117,65 @@ export function Review({ s }: { s: GameState }) {
     <div className="grid2">
       <Panel title="Battlefield forces undeployed">
         <div className="rows">
-          <Row label="Brigades free" value={`${freeBrigades(s)} of ${isr.brigades}`} />
-          <Row label="Reserves" value={`${isr.reserves} thousand`} tone={isr.reserves < 100 ? 'red' : ''} />
+          <Row
+            label="Brigades free"
+            value={`${freeBrigades(s)} of ${isr.brigades}`}
+            hint={HINTS.freeBrigades}
+          />
+          <Row
+            label="Reserves"
+            value={`${isr.reserves} thousand`}
+            tone={isr.reserves < 100 ? 'red' : ''}
+            hint={HINTS.reserves}
+          />
           <Row label="Nuclear devices" value={isr.warheads} tone="amber" />
         </div>
 
         <Serviceability s={s} />
 
-        <Arm title="Armour in reserve" fleet={stock} cat="tank" />
-        <Arm title="Combat aircraft in reserve" fleet={stock} cat="aircraft" />
-        <Arm title="Attack helicopters in reserve" fleet={stock} cat="helicopter" />
-        <Arm title="Early warning aircraft" fleet={stock} cat="surveillance" />
-        <Arm title="Air defence in reserve" fleet={stock} cat="sam" />
+        <SubTabs items={ARMS_VIEWS} selected={view} onSelect={setView} />
 
-        <div className="kicker" style={{ marginTop: 18 }}>
-          Committed to the borders
-        </div>
-        <div className="rows">
-          <Row label="Brigades deployed" value={forwardBrigades} />
-          <Row label="Tanks deployed" value={countOf(forward, 'tank').toLocaleString()} />
-          <Row
-            label="Combat aircraft on station"
-            value={countOf(forward, 'aircraft').toLocaleString()}
-          />
-          <Row
-            label="Attack helicopters on station"
-            value={countOf(forward, 'helicopter').toLocaleString()}
-          />
-          <Row label="Early warning aircraft on station" value={countOf(forward, 'surveillance')} />
-          <Row label="SAM batteries deployed" value={countOf(forward, 'sam')} />
-        </div>
+        {view === 'armour' && <Arm title="Armour in reserve" fleet={stock} cat="tank" />}
 
-        <div className="kicker" style={{ marginTop: 18 }}>
-          Arms deals
-        </div>
-        <div className="rows">
-          <Row label="Agreements signed" value={s.stats.armsAgreements} />
-          <Row
-            label="Total expenditure"
-            value={`$${s.stats.armsExpenditure.toLocaleString()} M`}
-          />
-        </div>
+        {view === 'air' && (
+          <>
+            <Arm title="Combat aircraft in reserve" fleet={stock} cat="aircraft" />
+            <Arm title="Attack helicopters in reserve" fleet={stock} cat="helicopter" />
+            <Arm title="Early warning aircraft" fleet={stock} cat="surveillance" />
+          </>
+        )}
+
+        {view === 'defence' && <Arm title="Air defence in reserve" fleet={stock} cat="sam" />}
+
+        {view === 'committed' && (
+          <div className="rows">
+            <Row label="Brigades deployed" value={forwardBrigades} />
+            <Row label="Tanks deployed" value={countOf(forward, 'tank').toLocaleString()} />
+            <Row
+              label="Combat aircraft on station"
+              value={countOf(forward, 'aircraft').toLocaleString()}
+            />
+            <Row
+              label="Attack helicopters on station"
+              value={countOf(forward, 'helicopter').toLocaleString()}
+            />
+            <Row
+              label="Early warning aircraft on station"
+              value={countOf(forward, 'surveillance')}
+            />
+            <Row label="SAM batteries deployed" value={countOf(forward, 'sam')} />
+          </div>
+        )}
+
+        {view === 'trade' && (
+          <div className="rows">
+            <Row label="Agreements signed" value={s.stats.armsAgreements} />
+            <Row
+              label="Total expenditure"
+              value={`$${s.stats.armsExpenditure.toLocaleString()} M`}
+            />
+          </div>
+        )}
       </Panel>
 
       <Panel title="Front line">

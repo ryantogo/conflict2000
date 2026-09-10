@@ -25,6 +25,7 @@ import {
   resolveTurn,
   startGame,
   tensionLabel,
+  usRelationsLabel,
   unrestLabel,
 } from './engine';
 import { Newspaper } from './ui/Newspaper';
@@ -177,13 +178,7 @@ function TopBar({ s }: { s: GameState }) {
           v={
             s.israel.suppliers.usa.embargoed
               ? 'EMBARGO'
-              : relationsWith(s, 'usa') >= 70
-                ? 'Excellent'
-                : relationsWith(s, 'usa') >= 50
-                  ? 'Good'
-                  : relationsWith(s, 'usa') >= 30
-                    ? 'Poor'
-                    : 'Sour'
+              : usRelationsLabel(relationsWith(s, 'usa'))
           }
           tone={s.israel.suppliers.usa.embargoed || relationsWith(s, 'usa') < 30 ? 'bad' : ''}
         />

@@ -46,7 +46,7 @@ const OP_COST: Record<IntelDirective, number> = {
   none: 0,
 };
 
-const OP_FUNDS: Record<IntelDirective, number> = {
+export const OP_FUNDS: Record<IntelDirective, number> = {
   collect: 12,
   support_insurgents: 18,
   disrupt_insurgents: 14,

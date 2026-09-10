@@ -884,3 +884,98 @@ svg.map {
   border: 1px dashed var(--ink-600);
   border-radius: var(--radius);
 }
+
+/* ---------------------------------------------------------------------------
+   Tooltips
+
+   The first floating layer in the stylesheet. Revealed on hover and on
+   keyboard focus, because a rule explained only to people with a mouse is
+   half explained. No transition on the reveal itself: a tooltip that fades in
+   is a tooltip you have to wait for.
+   --------------------------------------------------------------------------- */
+
+.tip {
+  position: relative;
+  border-bottom: 1px dotted var(--ink-400);
+  cursor: help;
+  outline: none;
+}
+
+.tip-body {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  display: none;
+  width: max-content;
+  max-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink-500);
+  border-radius: var(--radius);
+  background: var(--ink-900);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+}
+
+.tip:hover > .tip-body,
+.tip:focus-visible > .tip-body {
+  display: block;
+}
+
+/* A tooltip inside a row would be clipped by the panel's own rounding, and a
+   row is the commonest place to want one. Let the panel body overflow instead;
+   the header keeps its clip because it is the part with the radius on it. */
+.panel .body {
+  overflow: visible;
+}
+
+/* Near the right-hand edge of a column there is no room to open leftward. */
+.row .value .tip-body,
+.tip.right .tip-body {
+  left: auto;
+  right: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Sub-tabs — a switcher inside a screen
+   --------------------------------------------------------------------------- */
+
+.tabs.sub {
+  gap: 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--ink-600);
+}
+
+.tabs.sub .tab {
+  padding: 6px 12px;
+  font-size: 10px;
+}
+
+/* ---------------------------------------------------------------------------
+   Focus
+
+   Only the map had a focus style. Everything else fell back to the user
+   agent's outline, which on these surfaces is nearly invisible.
+   --------------------------------------------------------------------------- */
+
+.btn:focus-visible,
+.choice:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

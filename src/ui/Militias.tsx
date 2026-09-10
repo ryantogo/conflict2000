@@ -1,18 +1,17 @@
 import type { GameState, NationId } from '../engine';
 import type { FactionDirective } from '../engine';
 import type { FactionHome } from '../data/factions2000';
-import { factionOptions, factionsIn, successorOptions, successorsOf } from '../engine';
+import {
+  dispositionLabel,
+  factionOptions,
+  factionsIn,
+  militiaLabel,
+  successorOptions,
+  successorsOf,
+  supportLabel,
+} from '../engine';
 import { Choices, Panel, Row } from './bits';
 
-/** How dangerous an armed group currently is, as a word. */
-function militiaLabel(v: number): string {
-  if (v >= 75) return 'A standing army in all but name';
-  if (v >= 55) return 'Formidable';
-  if (v >= 35) return 'Capable';
-  if (v >= 18) return 'Harassing';
-  if (v >= 8) return 'Weakened';
-  return 'Spent';
-}
 
 /**
  * The armed groups operating out of one place. They have no border and no
@@ -62,13 +61,6 @@ export function Militias({
   );
 }
 
-function supportLabel(v: number): string {
-  if (v >= 70) return 'They are the street';
-  if (v >= 50) return 'Widely backed';
-  if (v >= 30) return 'A real constituency';
-  if (v >= 15) return 'A minority';
-  return 'Isolated';
-}
 
 /**
  * Who is contesting a fallen state. This panel is the answer to a collapse
@@ -129,10 +121,3 @@ export function Succession({
   );
 }
 
-function dispositionLabel(v: number): string {
-  if (v >= 0.6) return 'Would work with us openly';
-  if (v >= 0.25) return 'Would deal quietly';
-  if (v >= -0.25) return 'Indifferent to us';
-  if (v >= -0.6) return 'Hostile';
-  return 'Would fight us on day one';
-}

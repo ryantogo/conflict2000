@@ -46,7 +46,7 @@ export function MapRoom({ s, h }: { s: GameState; h: PlanningHandlers }) {
   return (
     <div className="maproom">
       <div className="mapcol">
-        <div className="map-modes">
+        <div className="map-modes" role="tablist">
           {MODES.map((m) => (
             <button
               key={m.id}
@@ -56,11 +56,15 @@ export function MapRoom({ s, h }: { s: GameState; h: PlanningHandlers }) {
               {m.label}
             </button>
           ))}
-          <span className="map-scope">
+          {/* Two switchers in one toolbar used to use two different idioms —
+              a tab strip for the mode and filled buttons for the scope. */}
+          <span className="map-scope" role="tablist">
             {VIEWS.map((v) => (
               <button
                 key={v.id}
-                className={`btn${view === v.id ? ' primary' : ''}`}
+                role="tab"
+                aria-selected={view === v.id}
+                className={`tab${view === v.id ? ' active' : ''}`}
                 onClick={() => setView(v.id)}
               >
                 {v.label}

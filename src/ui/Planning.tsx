@@ -12,7 +12,8 @@ import type {
   StrategicDirective,
   SupplierId,
 } from '../engine';
-import { officialReport, prestigeLabel, tensionLabel } from '../engine';
+import { officialReport, prestigeLabel, previewTurn, tensionLabel } from '../engine';
+import { factionSeedById } from '../data/factions2000';
 import { Bar, Panel, Row } from './bits';
 import { ForeignOffice } from './ForeignOffice';
 import { Strategic } from './Strategic';
@@ -49,24 +50,47 @@ export interface PlanningHandlers {
 export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
   const [tab, setTab] = useState<Tab>('map');
 
-  const queued =
-    Object.keys(s.directives.diplomatic).length +
-    Object.keys(s.directives.intel).length +
-    Object.keys(s.directives.strategic).length +
-    (s.directives.policing !== 'none' ? 1 : 0) +
-    (s.directives.fundNuclear ? 1 : 0) +
-    s.directives.purchases.length;
+  const d = s.directives;
+
+  // Which screens are carrying an order this month. The tab badge has been
+  // styled since the first commit and never rendered.
+  // Groups in the territories are ordered from the domestic screen; everything
+  // else — border militias and the successors of a fallen state — from
+  // Strategic Action.
+  const factionKeys = Object.keys(d.factions);
+  const territoryOrders = factionKeys.filter(
+    (k) => factionSeedById(k)?.home === 'territories',
+  ).length;
+
+  const pending: Record<Tab, number> = {
+    map: 0,
+    briefing: 0,
+    foreign:
+      Object.keys(d.diplomatic).length +
+      Object.keys(d.intel).length +
+      Object.keys(d.powers).length,
+    strategic: Object.keys(d.strategic).length + (factionKeys.length - territoryOrders),
+    arms: d.purchases.length,
+    review: 0,
+    domestic: (d.policing !== 'none' ? 1 : 0) + (d.fundNuclear ? 1 : 0) + territoryOrders,
+  };
+
+  const queued = Object.values(pending).reduce((a, b) => a + b, 0);
+  const effects = previewTurn(s);
 
   return (
     <div>
-      <div className="tabs">
+      <div className="tabs" role="tablist">
         {TABS.map((t) => (
           <button
             key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
             className={`tab${tab === t.id ? ' active' : ''}`}
             onClick={() => setTab(t.id)}
           >
             {t.label}
+            {pending[t.id] > 0 ? <span className="dot" /> : null}
           </button>
         ))}
       </div>
@@ -95,6 +119,25 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
           setFundNuclear={h.setFundNuclear}
           setFaction={h.setFaction}
         />
+      )}
+
+      {effects.length > 0 && (
+        <Panel title="Before you go">
+          <ul className="advice">
+            {effects.map((e, i) => (
+              <li key={i} className="small">
+                <span
+                  className={`mono ${
+                    e.tone === 'bad' ? 'red' : e.tone === 'warn' ? 'amber' : 'faint'
+                  }`}
+                >
+                  {e.area}
+                </span>{' '}
+                — {e.text}
+              </li>
+            ))}
+          </ul>
+        </Panel>
       )}
 
       <div className="btn-row end" style={{ marginTop: 22 }}>

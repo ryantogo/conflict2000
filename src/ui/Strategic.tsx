@@ -13,8 +13,25 @@ import {
   israeliStrength,
   strategicOptions,
 } from '../engine';
-import { Choices, Panel, Row, WarBar } from './bits';
+import type { SubTabItem } from './bits';
+import { Choices, Panel, Row, SubTabs, WarBar } from './bits';
 import { Militias, Succession } from './Militias';
+import { HINTS } from '../data/hints';
+
+type FrontView = 'forces' | 'intelligence';
+
+const FRONT_VIEWS: SubTabItem<FrontView>[] = [
+  {
+    id: 'forces',
+    label: 'Our forces',
+    legend: 'What is standing on this border, and what condition it is in.',
+  },
+  {
+    id: 'intelligence',
+    label: 'Assessment',
+    legend: 'What we believe is on the other side, and how much of it we can actually see.',
+  },
+];
 
 export function Strategic({
   s,
@@ -26,10 +43,11 @@ export function Strategic({
   setFaction: (id: string, d: FactionDirective) => void;
 }) {
   const [selected, setSelected] = useState<FrontId>('lebanon');
+  const [view, setView] = useState<FrontView>('forces');
   const front = s.fronts[selected];
   const nation = s.nations[selected];
   // What we believe, not what is true. The difference is the phase.
-  const view = assess(s, selected);
+  const assessment = assess(s, selected);
 
   return (
     <div className="grid2">
@@ -73,7 +91,10 @@ export function Strategic({
           </div>
         </Panel>
 
-        <Panel title={`${nation.name} border command report`}>
+        <SubTabs items={FRONT_VIEWS} selected={view} onSelect={setView} />
+
+        {view === 'forces' && (
+          <Panel title={`${nation.name} border command report`}>
           {front.atWar && (
             <div style={{ marginBottom: 14 }}>
               <div className="kicker">Fortunes of war</div>
@@ -105,42 +126,46 @@ export function Strategic({
             {countOf(front.deployed.equipment, 'tank') > 0 && (
               <Row
                 label="Condition of our armour"
+                hint={HINTS.armourCondition}
                 value={qualityLabel(grade(front.deployed.equipment, 'tank'), REGIONAL_NORM.tank)}
               />
             )}
             <Row
               label="Our combat weight"
               value={Math.round(israeliStrength(s, selected)).toLocaleString()}
+              hint={HINTS.combatWeight}
             />
             <Row
               label="Assessed opposing weight"
+              hint={HINTS.assessedWeight}
               value={
                 nation.collapsed
                   ? '—'
-                  : `${Math.round(view.low).toLocaleString()} – ${Math.round(
-                      view.high,
+                  : `${Math.round(assessment.low).toLocaleString()} – ${Math.round(
+                      assessment.high,
                     ).toLocaleString()}`
               }
               tone={
-                !nation.collapsed && view.estimate > israeliStrength(s, selected) ? 'red' : 'teal'
+                !nation.collapsed && assessment.estimate > israeliStrength(s, selected) ? 'red' : 'teal'
               }
-            />
-          </div>
-        </Panel>
+              />
+            </div>
+          </Panel>
+        )}
 
-        {!nation.collapsed && (
+        {view === 'intelligence' && !nation.collapsed && (
           <Panel
             title="Intelligence assessment"
-            right={<span className="mono small faint">{view.confidence}</span>}
+            right={<span className="mono small faint">{assessment.confidence}</span>}
           >
             <ul className="advice">
-              {view.notes.map((note, i) => (
+              {assessment.notes.map((note, i) => (
                 <li key={i} className="small">
                   {note}
                 </li>
               ))}
             </ul>
-            {view.coverage < 0.45 && (
+            {assessment.coverage < 0.45 && (
               <p className="small faint" style={{ marginBottom: 0 }}>
                 Running agents in {nation.name} would narrow this considerably.
               </p>

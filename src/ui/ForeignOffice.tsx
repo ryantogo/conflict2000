@@ -18,21 +18,37 @@ import {
   stabilityLabel,
 } from '../engine';
 import {
+  alertLabel,
   networkLabel,
   powerOptions,
   powerReport,
+  patienceLabel,
   powerStandingLabel,
 } from '../engine';
-import { Bar, Choices, Panel, Row } from './bits';
+import type { SubTabItem } from './bits';
+import { Bar, Choices, Panel, Row, SubTabs, Tip } from './bits';
+import { HINTS } from '../data/hints';
 
-/** How closely the target's own security service is watching us. */
-function alertLabel(v: number): string {
-  if (v < 12) return 'No sign of counter-surveillance';
-  if (v < 30) return 'Routine security interest';
-  if (v < 50) return 'Our people are being watched';
-  if (v < 70) return 'Networks under active investigation';
-  return 'Hostile service is hunting us';
-}
+type ForeignView = 'relations' | 'intelligence' | 'powers';
+
+const FOREIGN_VIEWS: SubTabItem<ForeignView>[] = [
+  {
+    id: 'relations',
+    label: 'Relations',
+    legend: 'Where we stand with the selected capital, and what to do about it.',
+  },
+  {
+    id: 'intelligence',
+    label: 'Intelligence',
+    legend: 'What Mossad has in place there, and who is looking for it.',
+  },
+  {
+    id: 'powers',
+    label: 'The powers',
+    legend: 'Washington, London and Paris. No borders, no armies — a relationship and a price.',
+  },
+];
+
 
 /**
  * The capitals that are not in the region. They have no border and no army,
@@ -87,7 +103,7 @@ function ThePowers({
         <Row label="Standing" value={powerStandingLabel(chosen.relations)} />
         <Row
           label="Willing to hear us"
-          value={chosen.patience >= 70 ? 'Yes' : chosen.patience >= 35 ? 'Tiring of it' : 'No'}
+          value={patienceLabel(chosen.patience)}
           tone={chosen.patience < 35 ? 'amber' : ''}
         />
         <Row
@@ -128,6 +144,7 @@ export function ForeignOffice({
   setPower: (id: PowerId, d: PowerDirective) => void;
 }) {
   const [selected, setSelected] = useState<NationId>('syria');
+  const [view, setView] = useState<ForeignView>('relations');
   const n = s.nations[selected];
 
   return (
@@ -170,7 +187,10 @@ export function ForeignOffice({
       </Panel>
 
       <div>
-        <Panel title={`${n.name} — official news`}>
+        <SubTabs items={FOREIGN_VIEWS} selected={view} onSelect={setView} />
+
+        {view === 'relations' && (
+          <Panel title={`${n.name} — official news`}>
           <div className="rows">
             <Row label="Leader" value={n.collapsed ? '— none —' : n.leader} />
             <Row label="Capital" value={n.capital} />
@@ -205,25 +225,31 @@ export function ForeignOffice({
               <Row label="Military pacts" value={n.pactWith.join(', ')} tone="teal" />
             )}
             {n.hasNuclear && <Row label="Nuclear" value="ARMED" tone="red" />}
-          </div>
-        </Panel>
+            </div>
+          </Panel>
+        )}
 
-        <Panel title="Diplomatic affairs">
-          <Choices
-            options={diplomaticOptions(s, selected)}
-            selected={s.directives.diplomatic[selected]}
-            onSelect={(d) => setDiplomatic(selected, d)}
-          />
-        </Panel>
+        {view === 'relations' && (
+          <Panel title="Diplomatic affairs">
+            <Choices
+              options={diplomaticOptions(s, selected)}
+              selected={s.directives.diplomatic[selected]}
+              onSelect={(d) => setDiplomatic(selected, d)}
+            />
+          </Panel>
+        )}
 
-        <Panel
-          title="Psychopolitical warfare intelligence unit"
-          right={
-            <span className="mono small">
-              Mossad {committedCapacity(s)}/{MOSSAD_CAPACITY}
-            </span>
-          }
-        >
+        {view === 'intelligence' && (
+          <Panel
+            title="Psychopolitical warfare intelligence unit"
+            right={
+              <Tip text={HINTS.mossadCapacity}>
+                <span className="mono small">
+                  Mossad {committedCapacity(s)}/{MOSSAD_CAPACITY}
+                </span>
+              </Tip>
+            }
+          >
           {/* A fallen state has no security service left to read. */}
           {!n.collapsed && (
             <>
@@ -232,11 +258,13 @@ export function ForeignOffice({
                   label="Our network there"
                   value={networkLabel(n.network)}
                   tone={n.network < 25 ? 'red' : n.network < 40 ? 'amber' : ''}
+                  hint={HINTS.network}
                 />
                 <Row
                   label="Their counter-intelligence"
                   value={alertLabel(n.counterIntel)}
                   tone={n.counterIntel >= 50 ? 'red' : n.counterIntel >= 30 ? 'amber' : ''}
+                  hint={HINTS.counterIntel}
                 />
               </div>
               <Bar value={n.counterIntel} tone={n.counterIntel >= 50 ? 'red' : undefined} />
@@ -251,15 +279,16 @@ export function ForeignOffice({
             />
           </div>
 
-          {committedCapacity(s) > MOSSAD_CAPACITY && (
-            <p className="small red" style={{ marginBottom: 0 }}>
-              Mossad is overcommitted. Every operation this month will be weaker and
-              more likely to be exposed.
-            </p>
-          )}
-        </Panel>
+            {committedCapacity(s) > MOSSAD_CAPACITY && (
+              <p className="small red" style={{ marginBottom: 0 }}>
+                Mossad is overcommitted. Every operation this month will be weaker and
+                more likely to be exposed.
+              </p>
+            )}
+          </Panel>
+        )}
 
-        <ThePowers s={s} setPower={setPower} />
+        {view === 'powers' && <ThePowers s={s} setPower={setPower} />}
       </div>
     </div>
   );

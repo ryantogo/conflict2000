@@ -1,6 +1,13 @@
 import type { FrontId, GameState, NationId } from '../engine';
 import type { ViewId } from '../data/geography';
-import { FRONTS, countOf, relationsLabel, stabilityLabel, unrestLabel } from '../engine';
+import {
+  FRONTS,
+  countOf,
+  relationsLabel,
+  stabilityLabel,
+  stabilityRung,
+  unrestLabel,
+} from '../engine';
 import {
   BACKDROP_LABELS,
   BACKDROP_RINGS,
@@ -246,19 +253,7 @@ function fillFor(s: GameState, id: NationId | 'israel', mode: MapMode): string {
 
   if (mode === 'relations') return RELATION_FILL[Math.max(0, Math.min(9, n.relations))];
 
-  if (mode === 'stability') {
-    const label = stabilityLabel(n.stability);
-    const i = [
-      'Very solid',
-      'Moderately solid',
-      'Fragile',
-      'Very weak',
-      'Dangerously weak',
-      'Close to revolution',
-      'State in turmoil',
-    ].indexOf(label);
-    return STABILITY_FILL[i < 0 ? 3 : i];
-  }
+  if (mode === 'stability') return STABILITY_FILL[stabilityRung(n.stability)];
 
   // Army size, in bands rather than a continuous ramp — a smooth gradient
   // over six armies of similar size just reads as one colour.

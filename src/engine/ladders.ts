@@ -126,14 +126,26 @@ export function relationsLabel(level: number): string {
  * Stability is stored 0..100 with 100 = rock solid. Like prestige, the rungs
  * are spaced by hand: a state at the halfway mark is Fragile, not Very weak.
  */
+/**
+ * Which rung of the stability ladder a figure sits on, 0 (solid) to 6.
+ *
+ * The map needs the rung, not the word. It used to get there by matching
+ * `stabilityLabel`'s output against its own hard-coded copy of the `STABILITY`
+ * array, so renaming a single rung silently coloured every country as
+ * "Very weak".
+ */
+export function stabilityRung(stability: number): number {
+  if (stability >= 80) return 0;
+  if (stability >= 62) return 1;
+  if (stability >= 40) return 2;
+  if (stability >= 28) return 3;
+  if (stability >= 18) return 4;
+  if (stability >= 8) return 5;
+  return 6;
+}
+
 export function stabilityLabel(stability: number): string {
-  if (stability >= 80) return STABILITY[0]; // Very solid
-  if (stability >= 62) return STABILITY[1]; // Moderately solid
-  if (stability >= 40) return STABILITY[2]; // Fragile
-  if (stability >= 28) return STABILITY[3]; // Very weak
-  if (stability >= 18) return STABILITY[4]; // Dangerously weak
-  if (stability >= 8) return STABILITY[5]; // Close to revolution
-  return STABILITY[6]; // State in turmoil
+  return STABILITY[stabilityRung(stability)];
 }
 
 export function oppositionLabel(strength: number): string {
@@ -208,6 +220,85 @@ export function networkLabel(v: number): string {
   if (v >= 38) return 'Some sources';
   if (v >= 18) return 'Thin';
   return 'Blown';
+}
+
+/**
+ * Ladders that grew up in the UI.
+ *
+ * These five were written where they were first needed — inside
+ * `ForeignOffice`, `Domestic` and `Militias` — and two more were inlined
+ * directly into JSX. A word ladder is engine vocabulary, not screen furniture:
+ * it is the game's way of refusing to show a number, which makes this file the
+ * only place any of them should live.
+ */
+
+/** How hard a foreign security service is currently looking for us. */
+export function alertLabel(v: number): string {
+  if (v < 12) return 'No sign of counter-surveillance';
+  if (v < 30) return 'Routine security interest';
+  if (v < 50) return 'Our people are being watched';
+  if (v < 70) return 'Networks under active investigation';
+  return 'Hostile service is hunting us';
+}
+
+/** Where a coalition partner stands with the premier. */
+export function standingLabel(v: number): string {
+  if (v >= 70) return 'Solid';
+  if (v >= 50) return 'Content';
+  if (v >= 38) return 'Restless';
+  if (v >= 25) return 'On the brink';
+  return 'Gone in all but name';
+}
+
+/** How dangerous an armed group currently is. */
+export function militiaLabel(v: number): string {
+  if (v >= 75) return 'A standing army in all but name';
+  if (v >= 55) return 'Formidable';
+  if (v >= 35) return 'Capable';
+  if (v >= 18) return 'Harassing';
+  if (v >= 8) return 'Weakened';
+  return 'Spent';
+}
+
+/** How much of the street a group speaks for. */
+export function supportLabel(v: number): string {
+  if (v >= 70) return 'They are the street';
+  if (v >= 50) return 'Widely backed';
+  if (v >= 30) return 'A real constituency';
+  if (v >= 15) return 'A minority';
+  return 'Isolated';
+}
+
+/** How a successor faction regards Israel. −1..1. */
+export function dispositionLabel(v: number): string {
+  if (v >= 0.6) return 'Would work with us openly';
+  if (v >= 0.25) return 'Would deal quietly';
+  if (v >= -0.25) return 'Indifferent to us';
+  if (v >= -0.6) return 'Hostile';
+  return 'Would fight us on day one';
+}
+
+/** Whether a capital is still willing to hear the argument. */
+export function patienceLabel(v: number): string {
+  if (v >= 70) return 'Willing to listen';
+  if (v >= 35) return 'Tiring of us';
+  return 'Has heard enough';
+}
+
+/** The American relationship, for the top bar. */
+export function usRelationsLabel(v: number): string {
+  if (v >= 70) return 'Excellent';
+  if (v >= 50) return 'Good';
+  if (v >= 30) return 'Poor';
+  return 'Sour';
+}
+
+/** A supplier's commercial goodwill. The one bare 0..100 the UI used to print. */
+export function loyaltyLabel(v: number): string {
+  if (v >= 70) return 'Preferred customer';
+  if (v >= 40) return 'Valued';
+  if (v >= 20) return 'Tolerated';
+  return 'Barely worth the paperwork';
 }
 
 export function pointsToRelations(points: number): number {

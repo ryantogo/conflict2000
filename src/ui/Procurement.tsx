@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { GameState, SupplierId } from '../engine';
 import {
   SUPPLIER_IDS,
+  loyaltyLabel,
   availableFrom,
   greet,
   industryReport,
@@ -98,7 +99,7 @@ export function Procurement({
                       {SUPPLIERS[id].name} dealer
                       {st.embargoed ? <span className="pill war"> embargo</span> : null}
                     </span>
-                    <span className="mono small faint">loyalty {st.loyalty}</span>
+                    <span className="mono small faint">{loyaltyLabel(st.loyalty)}</span>
                   </span>
                 </button>
               );

@@ -34,6 +34,8 @@ export {
   enemyStrength,
 } from './military';
 export { assess, confidenceLabel, coverage } from './assessment';
+export { previewTurn } from './preview';
+export type { QueuedEffect } from './preview';
 export { factionOptions, factionsIn } from './factions';
 export { successorOptions, successorsOf } from './factions';
 export type { FactionDirective, FactionStatus, SuccessorStatus } from './factions';
