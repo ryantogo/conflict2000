@@ -10,6 +10,7 @@ import { FRONTS } from './types';
 import { createNations } from '../data/nations2000';
 import { israeliOpeningStock } from '../data/inventory2000';
 import { PRODUCTION_LINES } from '../data/domestic2000';
+import { ORIGINS } from '../data/equipment';
 
 export function emptyDirectives(): Directives {
   return {
@@ -77,6 +78,8 @@ function createIsrael(): Israel {
     warheads: 4,
     suppliers,
     production,
+    // Everything is fully serviceable in June 2000.
+    readiness: Object.fromEntries(ORIGINS.map((o) => [o, 1])),
   };
 }
 

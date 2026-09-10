@@ -12,6 +12,7 @@ import { SUPPLIER_IDS } from './types';
 import { clamp } from './ladders';
 import { CATALOGUE, catalogueFor, itemById } from '../data/arms2000';
 import { addUnits, countOf } from './fleet';
+import type { Origin } from '../data/equipment';
 import type { ArmsItem } from '../data/arms2000';
 
 export interface DealerGreeting {
@@ -137,6 +138,55 @@ export function resolveDeliveries(s: GameState): string[] {
     const st = s.israel.suppliers[id];
     if (st.embargoed) continue;
     st.loyalty = clamp(st.loyalty - 1, 0, 100);
+  }
+
+  return notes;
+}
+
+/**
+ * How fast equipment goes unserviceable without spares, and how fast it comes
+ * back once the parts flow again. The floor matters as much as the rate: an
+ * embargo should hurt for years without ever being simply fatal, because a
+ * grounded air force that can never be recovered is not a game, it is an
+ * ending.
+ */
+const WEAR_RATE = 0.015;
+const REPAIR_RATE = 0.04;
+const READINESS_FLOOR = 0.55;
+
+/** Which supplier's goodwill keeps each origin's equipment in the air. */
+const ORIGIN_SUPPLIER: Partial<Record<Origin, SupplierId>> = {
+  usa: 'usa',
+  britain: 'britain',
+  france: 'france',
+};
+
+/**
+ * Spares. An embargo does not take the F-16s away; it stops the parts, and
+ * the squadrons go unserviceable a few airframes at a time. Equipment we
+ * build ourselves, and Soviet kit nobody in Washington has a say over, is
+ * unaffected — which is the whole argument for a domestic industry.
+ */
+export function resolveReadiness(s: GameState): string[] {
+  const notes: string[] = [];
+  const isr = s.israel;
+
+  for (const [origin, supplier] of Object.entries(ORIGIN_SUPPLIER) as [Origin, SupplierId][]) {
+    const cut = isr.suppliers[supplier].embargoed;
+    const before = isr.readiness[origin] ?? 1;
+    const after = cut
+      ? Math.max(READINESS_FLOOR, before - WEAR_RATE)
+      : Math.min(1, before + REPAIR_RATE);
+    isr.readiness[origin] = after;
+
+    // Report the crossings, not the drift, or the log is nothing else.
+    if (before > 0.9 && after <= 0.9) {
+      notes.push(`Spares shortages are beginning to tell on our ${origin.toUpperCase()} equipment.`);
+    } else if (before > 0.7 && after <= 0.7) {
+      notes.push(`A third of our ${origin.toUpperCase()}-supplied equipment is now unserviceable.`);
+    } else if (before < 1 && after >= 1) {
+      notes.push(`Spares are flowing again; our ${origin.toUpperCase()} equipment is fully serviceable.`);
+    }
   }
 
   return notes;

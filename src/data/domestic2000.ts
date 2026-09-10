@@ -14,13 +14,13 @@
  * 2000 and did not reach a unit until 2004.
  */
 
-import type { Equipment } from './equipment';
+import type { EquipmentSpec } from './equipment';
 
 /** Types that exist only because Israel builds them. */
-export const DOMESTIC_EQUIPMENT: Equipment[] = [
-  { id: 'merkava4', name: 'Merkava Mk 4', category: 'tank', power: 15 },
-  { id: 'arrow2', name: 'Arrow 2 (Homa)', category: 'sam', power: 22 },
-  { id: 'heron', name: 'IAI Heron', category: 'surveillance', power: 18 },
+export const DOMESTIC_EQUIPMENT: EquipmentSpec[] = [
+  { id: 'merkava4', name: 'Merkava Mk 4', category: 'tank', power: 15, origin: 'israel' },
+  { id: 'arrow2', name: 'Arrow 2 (Homa)', category: 'sam', power: 22, origin: 'israel' },
+  { id: 'heron', name: 'IAI Heron', category: 'surveillance', power: 18, origin: 'israel' },
 ];
 
 export interface ProductionLine {

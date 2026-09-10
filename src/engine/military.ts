@@ -493,7 +493,7 @@ function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEven
 /** Total combat weight Israel has on one front. */
 export function israeliStrength(s: GameState, id: FrontId): number {
   const d = s.fronts[id].deployed;
-  return d.brigades * 100 + israeliEquipmentWeight(d.equipment);
+  return d.brigades * 100 + israeliEquipmentWeight(d.equipment, s.israel.readiness);
 }
 
 /** Total combat weight the defender can bring to that front. */

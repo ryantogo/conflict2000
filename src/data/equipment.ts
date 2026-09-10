@@ -22,13 +22,26 @@ export type ArmsCategory = 'tank' | 'aircraft' | 'sam' | 'helicopter' | 'surveil
 /** Everything that flies. These share a combat weight; only power separates them. */
 export const AIR_CATEGORIES: ArmsCategory[] = ['aircraft', 'helicopter', 'surveillance'];
 
+/**
+ * Who built it, and therefore who can stop the spares. An embargo does not
+ * take tanks away; it grounds them a few at a time, month after month, and
+ * whose badge is on the engine decides which ones.
+ */
+export type Origin = 'usa' | 'britain' | 'france' | 'israel' | 'soviet' | 'other';
+
+export const ORIGINS: Origin[] = ['usa', 'britain', 'france', 'israel', 'soviet', 'other'];
+
 export interface Equipment {
   id: string;
   name: string;
   category: ArmsCategory;
-  /** Combat weight per unit, relative to `REFERENCE_POWER` for its category. */
+  /** Combat weight per unit, relative to `COMBAT_REFERENCE` for its category. */
   power: number;
+  origin: Origin;
 }
+
+/** Registry entries may omit an origin the source can derive. */
+export type EquipmentSpec = Omit<Equipment, 'origin'> & { origin?: Origin };
 
 /**
  * The hinge that keeps the arithmetic compatible with the flat-count model
@@ -59,12 +72,32 @@ export const REGIONAL_NORM: Record<ArmsCategory, number> = {
 
 const REGISTRY: Record<string, Equipment> = {};
 
-for (const item of [...CATALOGUE, ...IN_SERVICE, ...DOMESTIC_EQUIPMENT]) {
+/** The private dealer's stock is ex-Soviet, whatever the paperwork says. */
+const SUPPLIER_ORIGIN: Record<string, Origin> = {
+  usa: 'usa',
+  britain: 'britain',
+  france: 'france',
+  dealer: 'soviet',
+};
+
+for (const item of CATALOGUE) {
   REGISTRY[item.id] = {
     id: item.id,
     name: item.name,
     category: item.category,
     power: item.power,
+    // What you buy from a supplier is by definition made by them.
+    origin: SUPPLIER_ORIGIN[item.supplier] ?? 'other',
+  };
+}
+
+for (const item of [...IN_SERVICE, ...DOMESTIC_EQUIPMENT]) {
+  REGISTRY[item.id] = {
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    power: item.power,
+    origin: item.origin ?? 'other',
   };
 }
 

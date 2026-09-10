@@ -11,6 +11,7 @@
 import type { Fleet } from './types';
 import type { ArmsCategory } from '../data/equipment';
 import { AIR_CATEGORIES, COMBAT_REFERENCE, equipmentById } from '../data/equipment';
+import type { Origin } from '../data/equipment';
 
 export function emptyFleet(): Fleet {
   return {};
@@ -183,13 +184,62 @@ const THEIR_WEIGHT = {
   sam: 1.0 / COMBAT_REFERENCE.sam,
 };
 
-/** What this inventory is worth on an Israeli front. */
-export function israeliEquipmentWeight(f: Fleet): number {
+/**
+ * Power in a category, with each unit discounted by how serviceable its
+ * origin's equipment currently is. A grounded F-16 is still an F-16 on the
+ * inventory and worth nothing at all on the day.
+ */
+function servicedPower(
+  f: Fleet,
+  readiness: Record<string, number> | undefined,
+  cats: ArmsCategory[],
+): number {
+  let p = 0;
+  for (const [id, held] of Object.entries(f)) {
+    if (held <= 0) continue;
+    const e = equipmentById(id);
+    if (!e || !cats.includes(e.category)) continue;
+    p += held * e.power * (readiness?.[e.origin] ?? 1);
+  }
+  return p;
+}
+
+/**
+ * What this inventory is worth on an Israeli front. `readiness` is optional
+ * so that anything only interested in raw tonnage can leave it out.
+ */
+export function israeliEquipmentWeight(f: Fleet, readiness?: Record<string, number>): number {
   return (
-    powerOf(f, 'tank') * OUR_WEIGHT.tank +
-    airPower(f) * OUR_WEIGHT.air +
-    powerOf(f, 'sam') * OUR_WEIGHT.sam
+    servicedPower(f, readiness, ['tank']) * OUR_WEIGHT.tank +
+    servicedPower(f, readiness, AIR_CATEGORIES) * OUR_WEIGHT.air +
+    servicedPower(f, readiness, ['sam']) * OUR_WEIGHT.sam
   );
+}
+
+/** Mean serviceability across everything held, for the review screens. */
+export function fleetReadiness(f: Fleet, readiness: Record<string, number>): number {
+  let held = 0;
+  let serviced = 0;
+  for (const [id, n] of Object.entries(f)) {
+    if (n <= 0) continue;
+    const e = equipmentById(id);
+    if (!e) continue;
+    held += n;
+    serviced += n * (readiness[e.origin] ?? 1);
+  }
+  return held === 0 ? 1 : serviced / held;
+}
+
+/** How much of this fleet comes from each source. */
+export function byOrigin(f: Fleet): Record<Origin, number> {
+  const out = {} as Record<Origin, number>;
+  for (const [id, n] of Object.entries(f)) {
+    if (n <= 0) continue;
+    const e = equipmentById(id);
+    if (!e) continue;
+    out[e.origin] = (out[e.origin] ?? 0) + n;
+  }
+  return out;
 }
 
 /** What it is worth to the other side. */

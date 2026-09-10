@@ -2,18 +2,67 @@ import type { GameState } from '../engine';
 import type { ArmsCategory, Fleet } from '../engine';
 import {
   FRONTS,
+  ORIGINS,
   REGIONAL_NORM,
   breakdown,
+  byOrigin,
   countOf,
   emptyFleet,
+  fleetReadiness,
   freeBrigades,
   frontActivityLabel,
   frontReport,
   grade,
   mergeInto,
   qualityLabel,
+  serviceabilityLabel,
 } from '../engine';
 import { Panel, Row, WarBar } from './bits';
+
+const ORIGIN_NAME: Record<string, string> = {
+  usa: 'American-supplied',
+  britain: 'British-supplied',
+  france: 'French-supplied',
+  israel: 'Built at home',
+  soviet: 'Ex-Soviet',
+  other: 'Other sources',
+};
+
+/**
+ * Where the order of battle came from, and how much of it can be flown today.
+ * Only interesting once something is grounded, so it stays out of the way
+ * until an embargo starts to tell.
+ */
+function Serviceability({ s }: { s: GameState }) {
+  const stock = s.israel.stockpile.equipment;
+  const held = byOrigin(stock);
+  const overall = fleetReadiness(stock, s.israel.readiness);
+  const degraded = ORIGINS.filter((o) => (s.israel.readiness[o] ?? 1) < 1 && (held[o] ?? 0) > 0);
+
+  if (degraded.length === 0) return null;
+
+  return (
+    <>
+      <div className="kicker" style={{ marginTop: 16 }}>
+        Serviceability — {serviceabilityLabel(overall)}
+      </div>
+      <div className="rows">
+        {degraded.map((o) => (
+          <Row
+            key={o}
+            label={`${ORIGIN_NAME[o] ?? o} · ${(held[o] ?? 0).toLocaleString()} units`}
+            value={serviceabilityLabel(s.israel.readiness[o] ?? 1)}
+            tone={(s.israel.readiness[o] ?? 1) < 0.75 ? 'red' : 'amber'}
+          />
+        ))}
+      </div>
+      <p className="small faint" style={{ margin: '6px 0 0' }}>
+        Without spares, equipment goes unserviceable a few units at a time. What we
+        build ourselves is unaffected.
+      </p>
+    </>
+  );
+}
 
 /** One arm of a force: what it is, how much of it, and how good it is. */
 function Arm({ title, fleet, cat }: { title: string; fleet: Fleet; cat: ArmsCategory }) {
@@ -58,6 +107,8 @@ export function Review({ s }: { s: GameState }) {
           <Row label="Reserves" value={`${isr.reserves} thousand`} tone={isr.reserves < 100 ? 'red' : ''} />
           <Row label="Nuclear devices" value={isr.warheads} tone="amber" />
         </div>
+
+        <Serviceability s={s} />
 
         <Arm title="Armour in reserve" fleet={stock} cat="tank" />
         <Arm title="Combat aircraft in reserve" fleet={stock} cat="aircraft" />

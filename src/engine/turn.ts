@@ -22,7 +22,7 @@ import { emptyDirectives, freeBrigades } from './state';
 import { endWar, expireMandates, resolveDiplomacy } from './diplomacy';
 import { driftInternals, resolveIntelligence } from './intelligence';
 import { resolveCombat, resolveStrategic } from './military';
-import { resolveDeliveries, updateEmbargoes } from './arms';
+import { resolveDeliveries, resolveReadiness, updateEmbargoes } from './arms';
 import { resolveProduction } from './industry';
 import { resolvePalestine } from './palestine';
 import { holocaustCheck, resolveNuclear } from './nuclear';
@@ -97,6 +97,11 @@ export function resolveTurn(s: GameState): GameState {
   // 5. Consequences.
   push(
     updateEmbargoes(s).map((t) => ({ text: t, weight: 3 })),
+    'economy',
+  );
+  // Spares follow the embargo, so this reads the state the embargo just set.
+  push(
+    resolveReadiness(s).map((t) => ({ text: t, weight: 1 })),
     'economy',
   );
   updateMeters(s, rng);

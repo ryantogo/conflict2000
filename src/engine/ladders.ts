@@ -182,6 +182,15 @@ export function qualityLabel(mean: number, reference: number): string {
   return 'Obsolete';
 }
 
+/** How much of a force can actually be flown or driven today, as a word. */
+export function serviceabilityLabel(ratio: number): string {
+  if (ratio >= 0.98) return 'Fully serviceable';
+  if (ratio >= 0.88) return 'Minor shortages';
+  if (ratio >= 0.75) return 'Spares running short';
+  if (ratio >= 0.62) return 'Squadrons grounded';
+  return 'Crippled by shortages';
+}
+
 export function pointsToRelations(points: number): number {
   return clamp(Math.floor((points + 100) / 20.1), 0, 9);
 }

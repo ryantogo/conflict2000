@@ -240,6 +240,12 @@ export interface Israel {
   suppliers: Record<SupplierId, SupplierState>;
   /** Our own factories, keyed by production line id. */
   production: Record<string, ProductionState>;
+  /**
+   * Serviceability of each origin's equipment, 0..1. An embargo does not
+   * confiscate aircraft, it stops the spares; airframes go unserviceable a
+   * few at a time until somebody starts selling parts again.
+   */
+  readiness: Record<string, number>;
 }
 
 /** A standing production line, funded until you stop funding it. */
