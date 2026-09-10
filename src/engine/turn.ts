@@ -26,6 +26,7 @@ import { resolveDeliveries, updateEmbargoes } from './arms';
 import { resolvePalestine } from './palestine';
 import { holocaustCheck, resolveNuclear } from './nuclear';
 import { runAi } from './ai';
+import { runRearmament } from './procurement';
 import { runScripted } from '../data/scripted';
 import { FILLER } from '../data/headlines';
 import { MASTHEADS } from '../data/nations2000';
@@ -79,6 +80,7 @@ export function resolveTurn(s: GameState): GameState {
 
   // 3. Everybody else moves.
   events.push(...runAi(s, rng));
+  events.push(...runRearmament(s, rng));
   driftInternals(s, rng);
 
   // 4. Fight.

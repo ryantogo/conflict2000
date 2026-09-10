@@ -10,7 +10,10 @@
 import type { Nation, NationId } from '../engine/types';
 import { openingInventory } from './inventory2000';
 
-type NationSeed = Omit<Nation, 'relationsPoints' | 'baseStability' | 'counterIntel'>;
+type NationSeed = Omit<
+  Nation,
+  'relationsPoints' | 'baseStability' | 'counterIntel' | 'rearmPoints'
+>;
 
 const seeds: NationSeed[] = [
   {
@@ -204,6 +207,7 @@ export function createNations(): Record<NationId, Nation> {
       baseStability: s.stability,
       // Nobody is looking for us yet.
       counterIntel: 0,
+      rearmPoints: 0,
       // Centre each nation in the middle of its starting relations band.
       relationsPoints: s.relations * 20 - 90,
     };

@@ -155,6 +155,11 @@ export interface Nation {
    */
   counterIntel: number;
   forces: Forces;
+  /**
+   * Fractional equipment deliveries carried between months, so a state that
+   * can afford two thirds of a tank a month eventually gets a tank.
+   */
+  rearmPoints: number;
   /** Relations between this nation and each other nation, 0..9. */
   interArab: Partial<Record<NationId, number>>;
   /** Nations this state is currently at war with (including 'israel'). */
