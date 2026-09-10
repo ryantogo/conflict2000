@@ -167,6 +167,21 @@ export function frontActivityLabel(activity: number): string {
 }
 
 /** Relations 0..9 are stored as a -100..+100 point pool underneath. */
+/**
+ * How good a fleet is, as a word. Materiel may be shown as a number in this
+ * game where politics may not, but "our armour is obsolescent" is worth more
+ * to a defence minister than a mean power of 6.2.
+ */
+export function qualityLabel(mean: number, reference: number): string {
+  const r = mean / reference;
+  if (r >= 1.45) return 'Cutting edge';
+  if (r >= 1.15) return 'Modern';
+  if (r >= 0.95) return 'Adequate';
+  if (r >= 0.78) return 'Ageing';
+  if (r >= 0.6) return 'Obsolescent';
+  return 'Obsolete';
+}
+
 export function pointsToRelations(points: number): number {
   return clamp(Math.floor((points + 100) / 20.1), 0, 9);
 }

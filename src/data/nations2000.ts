@@ -8,7 +8,7 @@
  */
 
 import type { Nation, NationId } from '../engine/types';
-import { orderOfBattle } from './inventory2000';
+import { openingInventory } from './inventory2000';
 
 type NationSeed = Omit<Nation, 'relationsPoints' | 'baseStability' | 'counterIntel'>;
 
@@ -29,7 +29,7 @@ const seeds: NationSeed[] = [
     // Roughly twice the Israeli order of battle, as in the original manual.
     forces: {
       brigades: 14,
-      equipment: orderOfBattle({ tanks: 3500, aircraft: 570, sam: 90 }),
+      equipment: openingInventory('egypt'),
     },
     interArab: { jordan: 6, syria: 4, iraq: 2, libya: 1, lebanon: 4, iran: 3 },
     atWarWith: [],
@@ -55,7 +55,7 @@ const seeds: NationSeed[] = [
     israeliPosture: 'neutral',
     forces: {
       brigades: 10,
-      equipment: orderOfBattle({ tanks: 4500, aircraft: 480, sam: 130 }),
+      equipment: openingInventory('syria'),
     },
     interArab: { egypt: 4, jordan: 3, iraq: 1, lebanon: 8, libya: 4, iran: 6 },
     atWarWith: [],
@@ -79,7 +79,7 @@ const seeds: NationSeed[] = [
     israeliPosture: 'neutral',
     forces: {
       brigades: 5,
-      equipment: orderOfBattle({ tanks: 1200, aircraft: 100, sam: 30 }),
+      equipment: openingInventory('jordan'),
     },
     interArab: { egypt: 6, syria: 3, iraq: 5, lebanon: 4, libya: 3, iran: 2 },
     atWarWith: [],
@@ -104,7 +104,7 @@ const seeds: NationSeed[] = [
     israeliPosture: 'neutral',
     forces: {
       brigades: 3,
-      equipment: orderOfBattle({ tanks: 300, sam: 10 }),
+      equipment: openingInventory('lebanon'),
     },
     interArab: { syria: 8, egypt: 4, jordan: 4, iraq: 2, libya: 2, iran: 7 },
     atWarWith: [],
@@ -128,7 +128,7 @@ const seeds: NationSeed[] = [
     israeliPosture: 'neutral',
     forces: {
       brigades: 12,
-      equipment: orderOfBattle({ tanks: 2200, aircraft: 300, sam: 70 }),
+      equipment: openingInventory('iraq'),
     },
     interArab: { iran: 1, jordan: 5, syria: 1, egypt: 2, libya: 4, lebanon: 2 },
     atWarWith: [],
@@ -153,7 +153,7 @@ const seeds: NationSeed[] = [
     israeliPosture: 'neutral',
     forces: {
       brigades: 16,
-      equipment: orderOfBattle({ tanks: 1500, aircraft: 300, sam: 60 }),
+      equipment: openingInventory('iran'),
     },
     interArab: { iraq: 1, syria: 6, lebanon: 7, egypt: 3, jordan: 2, libya: 4 },
     atWarWith: [],
@@ -176,7 +176,7 @@ const seeds: NationSeed[] = [
     israeliPosture: 'neutral',
     forces: {
       brigades: 4,
-      equipment: orderOfBattle({ tanks: 2200, aircraft: 400, sam: 40 }),
+      equipment: openingInventory('libya'),
     },
     interArab: { egypt: 1, syria: 4, iraq: 4, jordan: 3, lebanon: 2, iran: 4 },
     atWarWith: [],

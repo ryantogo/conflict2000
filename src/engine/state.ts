@@ -8,7 +8,7 @@ import type {
 } from './types';
 import { FRONTS } from './types';
 import { createNations } from '../data/nations2000';
-import { orderOfBattle } from '../data/inventory2000';
+import { israeliOpeningStock } from '../data/inventory2000';
 
 export function emptyDirectives(): Directives {
   return {
@@ -63,16 +63,7 @@ function createIsrael(): Israel {
     // The 450-strong air arm of the original, broken out the way the player
     // buys it: roughly the June 2000 IAF — combat aircraft, an attack
     // helicopter force, and a handful of early warning craft.
-    stockpile: {
-      brigades: 0,
-      equipment: orderOfBattle({
-        tanks: 3900,
-        aircraft: 357,
-        helicopters: 90,
-        awacs: 3,
-        sam: 110,
-      }),
-    },
+    stockpile: { brigades: 0, equipment: israeliOpeningStock() },
     // A narrow coalition that historically fell apart before Camp David.
     popularity: 47,
     nuclearPosture: 'opacity',

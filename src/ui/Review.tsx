@@ -1,14 +1,45 @@
 import type { GameState } from '../engine';
+import type { ArmsCategory, Fleet } from '../engine';
 import {
   FRONTS,
+  REGIONAL_NORM,
+  breakdown,
   countOf,
   emptyFleet,
   freeBrigades,
   frontActivityLabel,
   frontReport,
+  grade,
   mergeInto,
+  qualityLabel,
 } from '../engine';
 import { Panel, Row, WarBar } from './bits';
+
+/** One arm of a force: what it is, how much of it, and how good it is. */
+function Arm({ title, fleet, cat }: { title: string; fleet: Fleet; cat: ArmsCategory }) {
+  const types = breakdown(fleet, cat);
+  const total = countOf(fleet, cat);
+
+  return (
+    <>
+      <div className="kicker" style={{ marginTop: 16 }}>
+        {title} — {total.toLocaleString()}
+        {total > 0 ? ` · ${qualityLabel(grade(fleet, cat), REGIONAL_NORM[cat])}` : ''}
+      </div>
+      {types.length === 0 ? (
+        <p className="small faint" style={{ margin: '6px 0 0' }}>
+          None held.
+        </p>
+      ) : (
+        <div className="rows">
+          {types.map((t) => (
+            <Row key={t.id} label={t.name} value={t.count.toLocaleString()} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
 
 export function Review({ s }: { s: GameState }) {
   const isr = s.israel;
@@ -25,19 +56,14 @@ export function Review({ s }: { s: GameState }) {
         <div className="rows">
           <Row label="Brigades free" value={`${freeBrigades(s)} of ${isr.brigades}`} />
           <Row label="Reserves" value={`${isr.reserves} thousand`} tone={isr.reserves < 100 ? 'red' : ''} />
-          <Row label="Tanks in reserve" value={countOf(stock, 'tank').toLocaleString()} />
-          <Row
-            label="Combat aircraft in reserve"
-            value={countOf(stock, 'aircraft').toLocaleString()}
-          />
-          <Row
-            label="Attack helicopters in reserve"
-            value={countOf(stock, 'helicopter').toLocaleString()}
-          />
-          <Row label="Early warning aircraft" value={countOf(stock, 'surveillance')} />
-          <Row label="SAM batteries in reserve" value={countOf(stock, 'sam')} />
           <Row label="Nuclear devices" value={isr.warheads} tone="amber" />
         </div>
+
+        <Arm title="Armour in reserve" fleet={stock} cat="tank" />
+        <Arm title="Combat aircraft in reserve" fleet={stock} cat="aircraft" />
+        <Arm title="Attack helicopters in reserve" fleet={stock} cat="helicopter" />
+        <Arm title="Early warning aircraft" fleet={stock} cat="surveillance" />
+        <Arm title="Air defence in reserve" fleet={stock} cat="sam" />
 
         <div className="kicker" style={{ marginTop: 18 }}>
           Committed to the borders

@@ -30,13 +30,30 @@ export interface Equipment {
 }
 
 /**
- * The quality of a typical regional unit. A fleet averaging these numbers is
- * worth exactly what the old flat-count model said it was worth.
+ * The hinge that keeps the arithmetic compatible with the flat-count model
+ * this replaced: a unit of exactly this power is worth what any unit of its
+ * category used to be worth. Changing these rescales every combat weight in
+ * the game, so don't, unless that is precisely what you mean to do.
  */
-export const REFERENCE_POWER: Record<'tank' | 'air' | 'sam', number> = {
+export const COMBAT_REFERENCE: Record<'tank' | 'air' | 'sam', number> = {
   tank: 8,
   air: 20,
   sam: 10,
+};
+
+/**
+ * What a typical unit of this kind looks like *in this region in 2000*, used
+ * only to turn a fleet's mean power into a word. Deliberately not the combat
+ * reference: most armour on these borders is a T-55 or a Type 59, and it is
+ * measuring the Merkava against that which makes "modern" mean anything.
+ * Measured against Israel's own average, Israel is by definition average.
+ */
+export const REGIONAL_NORM: Record<ArmsCategory, number> = {
+  tank: 6,
+  aircraft: 13,
+  helicopter: 10,
+  surveillance: 25,
+  sam: 7,
 };
 
 const REGISTRY: Record<string, Equipment> = {};

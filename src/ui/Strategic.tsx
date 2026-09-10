@@ -2,9 +2,12 @@ import { useState } from 'react';
 import type { FrontId, GameState, StrategicDirective } from '../engine';
 import {
   FRONTS,
+  REGIONAL_NORM,
   countOf,
   enemyStrength,
   freeBrigades,
+  grade,
+  qualityLabel,
   frontActivityLabel,
   frontReport,
   israeliStrength,
@@ -94,6 +97,12 @@ export function Strategic({
               value={countOf(front.deployed.equipment, 'surveillance')}
             />
             <Row label="SAM batteries" value={countOf(front.deployed.equipment, 'sam')} />
+            {countOf(front.deployed.equipment, 'tank') > 0 && (
+              <Row
+                label="Condition of our armour"
+                value={qualityLabel(grade(front.deployed.equipment, 'tank'), REGIONAL_NORM.tank)}
+              />
+            )}
             <Row
               label="Our combat weight"
               value={Math.round(israeliStrength(s, selected)).toLocaleString()}

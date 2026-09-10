@@ -10,7 +10,7 @@
 
 import type { Fleet } from './types';
 import type { ArmsCategory } from '../data/equipment';
-import { AIR_CATEGORIES, REFERENCE_POWER, equipmentById } from '../data/equipment';
+import { AIR_CATEGORIES, COMBAT_REFERENCE, equipmentById } from '../data/equipment';
 
 export function emptyFleet(): Fleet {
   return {};
@@ -141,6 +141,27 @@ export function compact(f: Fleet): void {
   }
 }
 
+/** What is actually parked here, heaviest type first, for the review screens. */
+export function breakdown(
+  f: Fleet,
+  ...cats: ArmsCategory[]
+): { id: string; name: string; count: number; power: number }[] {
+  const out: { id: string; name: string; count: number; power: number }[] = [];
+  for (const [id, held] of Object.entries(f)) {
+    if (held <= 0) continue;
+    const e = equipmentById(id);
+    if (!e || !cats.includes(e.category)) continue;
+    out.push({ id, name: e.name, count: held, power: e.power });
+  }
+  return out.sort((a, b) => b.power - a.power || b.count - a.count);
+}
+
+/** Mean power per unit: how good the kit is, regardless of how much there is. */
+export function grade(f: Fleet, ...cats: ArmsCategory[]): number {
+  const n = countOf(f, ...cats);
+  return n === 0 ? 0 : powerOf(f, ...cats) / n;
+}
+
 // ---------------------------------------------------------------------------
 // Combat weight
 // ---------------------------------------------------------------------------
@@ -151,15 +172,15 @@ export function compact(f: Fleet): void {
  * reference power is still worth 0.09 to us and 0.06 to them.
  */
 const OUR_WEIGHT = {
-  tank: 0.09 / REFERENCE_POWER.tank,
-  air: 0.5 / REFERENCE_POWER.air,
-  sam: 1.2 / REFERENCE_POWER.sam,
+  tank: 0.09 / COMBAT_REFERENCE.tank,
+  air: 0.5 / COMBAT_REFERENCE.air,
+  sam: 1.2 / COMBAT_REFERENCE.sam,
 };
 
 const THEIR_WEIGHT = {
-  tank: 0.06 / REFERENCE_POWER.tank,
-  air: 0.35 / REFERENCE_POWER.air,
-  sam: 1.0 / REFERENCE_POWER.sam,
+  tank: 0.06 / COMBAT_REFERENCE.tank,
+  air: 0.35 / COMBAT_REFERENCE.air,
+  sam: 1.0 / COMBAT_REFERENCE.sam,
 };
 
 /** What this inventory is worth on an Israeli front. */
