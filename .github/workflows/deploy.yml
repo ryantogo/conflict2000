@@ -35,7 +35,13 @@ jobs:
 
       - run: npm run build
 
+      # enablement: true lets the workflow turn Pages on itself, so a fresh
+      # repo deploys on the first push instead of failing until somebody
+      # enables Pages by hand.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
