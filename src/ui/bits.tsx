@@ -45,6 +45,8 @@ export function Row({
 export interface ChoiceItem<T extends string> {
   id: T;
   label: string;
+  /** What choosing it will do, and to whom — in words. */
+  detail?: string;
   disabledReason?: string;
 }
 
@@ -72,6 +74,9 @@ export function Choices<T extends string>({
             <span className="tick">{isSelected ? '▸' : ''}</span>
             <span>
               {o.label}
+              {o.detail && !o.disabledReason ? (
+                <span className="why detail">{o.detail}</span>
+              ) : null}
               {o.disabledReason ? <span className="why">{o.disabledReason}</span> : null}
             </span>
           </button>

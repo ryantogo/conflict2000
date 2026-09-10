@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type {
+  AppeaseAction,
   DiplomaticDirective,
   FrontId,
   GameState,
@@ -7,8 +8,12 @@ import type {
   NationId,
   PolicingDirective,
   FactionDirective,
+  IncidentResponse,
+  MediatorId,
+  ObligationAnswer,
   PowerDirective,
   PowerId,
+  RegionalWarDirective,
   RemoteDirective,
   RemoteId,
   StrategicDirective,
@@ -43,6 +48,14 @@ export interface PlanningHandlers {
   setFaction: (id: string, d: FactionDirective) => void;
   setStrategic: (id: FrontId, d: StrategicDirective) => void;
   setRemote: (id: RemoteId, d: RemoteDirective) => void;
+  setJoint: (partner: NationId, target: NationId) => void;
+  setMediation: (enemy: NationId, m: MediatorId) => void;
+  setRegional: (key: string, d: RegionalWarDirective) => void;
+  setObligation: (id: string, a: ObligationAnswer) => void;
+  setCabinetChoice: (id: string) => void;
+  setIncidentResponse: (id: string, r: IncidentResponse) => void;
+  setAppease: (party: string, action: AppeaseAction) => void;
+  setElection: (v: boolean) => void;
   setPolicing: (d: PolicingDirective) => void;
   setFundNuclear: (v: boolean) => void;
   order: (supplier: SupplierId, itemId: string, qty: number) => string | null;
@@ -71,14 +84,29 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
     foreign:
       Object.keys(d.diplomatic).length +
       Object.keys(d.intel).length +
-      Object.keys(d.powers).length,
+      Object.keys(d.powers).length +
+      (d.joint ? 1 : 0) +
+      Object.keys(d.mediation).length +
+      Object.keys(d.regional).length +
+      // An unanswered treaty obligation needs attention whether or not
+      // anything has been queued.
+      Math.max(Object.keys(d.obligations).length, s.obligations.length),
     strategic:
       Object.keys(d.strategic).length +
       Object.keys(d.remote).length +
-      (factionKeys.length - territoryOrders),
+      (factionKeys.length - territoryOrders) +
+      // An attack waiting on an answer needs attention until it has one.
+      Math.max(Object.keys(d.incidentResponse).length, s.incidents.length),
     arms: d.purchases.length,
     review: 0,
-    domestic: (d.policing !== 'none' ? 1 : 0) + (d.fundNuclear ? 1 : 0) + territoryOrders,
+    domestic:
+      (d.policing !== 'none' ? 1 : 0) +
+      (d.fundNuclear ? 1 : 0) +
+      territoryOrders +
+      (d.appease ? 1 : 0) +
+      (d.callElection ? 1 : 0) +
+      // A question before the cabinet needs attention until it is answered.
+      (s.cabinet.pending ? 1 : 0),
   };
 
   const queued = Object.values(pending).reduce((a, b) => a + b, 0);
@@ -109,6 +137,7 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
           setDiplomatic={h.setDiplomatic}
           setIntel={h.setIntel}
           setPower={h.setPower}
+          alliances={h}
         />
       )}
       {tab === 'strategic' && (
@@ -117,6 +146,7 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
           setStrategic={h.setStrategic}
           setRemote={h.setRemote}
           setFaction={h.setFaction}
+          setIncidentResponse={h.setIncidentResponse}
         />
       )}
       {tab === 'arms' && (
@@ -129,6 +159,7 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
           setPolicing={h.setPolicing}
           setFundNuclear={h.setFundNuclear}
           setFaction={h.setFaction}
+          cabinet={h}
         />
       )}
 

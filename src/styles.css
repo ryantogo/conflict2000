@@ -434,6 +434,12 @@ button {
   font-style: italic;
 }
 
+/* What a choice will do, as opposed to why it cannot be made. */
+.choice .why.detail {
+  font-style: normal;
+  color: var(--text-dim);
+}
+
 .choice .tick {
   font-family: var(--mono);
   color: var(--amber);

@@ -3,19 +3,30 @@ import type {
   DiplomaticDirective,
   GameState,
   IntelDirective,
+  MediatorId,
   NationId,
+  ObligationAnswer,
   PowerDirective,
   PowerId,
+  RegionalWarDirective,
 } from '../engine';
 import {
   MOSSAD_CAPACITY,
   NATION_IDS,
   committedCapacity,
   diplomaticOptions,
+  groundHeld,
   intelOptions,
+  jointOptions,
+  jointPartners,
+  mediatorOptions,
+  obligationOptions,
+  occupationLabel,
   oppositionLabel,
+  regionalWarOptions,
   relationsLabel,
   stabilityLabel,
+  warKey,
 } from '../engine';
 import {
   alertLabel,
@@ -26,10 +37,10 @@ import {
   powerStandingLabel,
 } from '../engine';
 import type { SubTabItem } from './bits';
-import { Bar, Choices, Panel, Row, SubTabs, Tip } from './bits';
+import { Bar, Choices, Panel, Row, SubTabs, Tip, WarBar } from './bits';
 import { HINTS } from '../data/hints';
 
-type ForeignView = 'relations' | 'intelligence' | 'powers';
+type ForeignView = 'relations' | 'intelligence' | 'alliances' | 'powers';
 
 const FOREIGN_VIEWS: SubTabItem<ForeignView>[] = [
   {
@@ -43,11 +54,138 @@ const FOREIGN_VIEWS: SubTabItem<ForeignView>[] = [
     legend: 'What Mossad has in place there, and who is looking for it.',
   },
   {
+    id: 'alliances',
+    label: 'Wars & alliances',
+    legend:
+      'Treaties called in, offensives proposed to friends, and the wars the other states are fighting.',
+  },
+  {
     id: 'powers',
     label: 'The powers',
     legend: 'Washington, London and Paris. No borders, no armies — a relationship and a price.',
   },
 ];
+
+export interface AllianceHandlers {
+  setJoint: (partner: NationId, target: NationId) => void;
+  setMediation: (enemy: NationId, m: MediatorId) => void;
+  setRegional: (key: string, d: RegionalWarDirective) => void;
+  setObligation: (id: string, a: ObligationAnswer) => void;
+}
+
+/**
+ * Treaties, offensives, and other people's wars. A treaty is a promise to be
+ * on somebody's side, and this is the screen where the promise is called in.
+ */
+function Alliances({ s, h }: { s: GameState; h: AllianceHandlers }) {
+  const partners = jointPartners(s);
+  const [picked, setPicked] = useState<NationId | null>(null);
+  const partner = picked && partners.includes(picked) ? picked : (partners[0] ?? null);
+  const d = s.directives;
+
+  return (
+    <>
+      {s.obligations.map((o) => (
+        <Panel key={o.id} title={`Treaty obligation — ${s.nations[o.partner].name}`}>
+          <p className="small dim" style={{ marginTop: 0 }}>
+            {s.nations[o.aggressor].name} has attacked {s.nations[o.partner].name}, and our treaty
+            says we answer. If we say nothing, the treaty dies — and every other government
+            that has one with us will draw its own conclusions.
+          </p>
+          <Choices
+            options={obligationOptions(s, o)}
+            selected={d.obligations[o.id]}
+            onSelect={(a) => h.setObligation(o.id, a)}
+          />
+        </Panel>
+      ))}
+
+      <Panel title="Joint offensive">
+        {partners.length === 0 || !partner ? (
+          <p className="small faint" style={{ margin: 0 }}>
+            No government in the region is close enough to us to fight beside us. It takes
+            relations of Beneficial, or a defence treaty.
+          </p>
+        ) : (
+          <>
+            <div className="choices" style={{ marginBottom: 10 }}>
+              {partners.map((id) => (
+                <button
+                  key={id}
+                  className={`choice${partner === id ? ' selected' : ''}`}
+                  onClick={() => setPicked(id)}
+                >
+                  <span className="tick">{partner === id ? '▸' : ''}</span>
+                  <span style={{ flex: 1, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>
+                      {s.nations[id].name}
+                      {s.nations[id].pactWith.includes('israel') ? (
+                        <span className="pill pact"> treaty</span>
+                      ) : null}
+                    </span>
+                    <span className="mono small faint">{relationsLabel(s.nations[id].relations)}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            {jointOptions(s, partner).length === 0 ? (
+              <p className="small faint" style={{ margin: 0 }}>
+                {s.nations[partner].name} despises nobody enough to go to war over it.
+              </p>
+            ) : (
+              <Choices
+                options={jointOptions(s, partner)}
+                selected={d.joint?.partner === partner ? d.joint.target : undefined}
+                onSelect={(t) => h.setJoint(partner, t)}
+              />
+            )}
+          </>
+        )}
+      </Panel>
+
+      <Panel title="Wars in the region">
+        {s.wars.length === 0 ? (
+          <p className="small faint" style={{ margin: 0 }}>
+            Nobody else is fighting.
+          </p>
+        ) : (
+          s.wars.map((w) => {
+            const a = s.nations[w.a];
+            const b = s.nations[w.b];
+            const aHolds = groundHeld(w, w.a);
+            const bHolds = groundHeld(w, w.b);
+            return (
+              <div key={warKey(w)} style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <strong>
+                    {a.name} against {b.name}
+                  </strong>
+                  <span className="mono small faint">month {w.months}</span>
+                </div>
+                <div style={{ margin: '6px 0' }}>
+                  <WarBar progress={w.progress} />
+                </div>
+                <div className="small dim" style={{ marginBottom: 8 }}>
+                  {aHolds > 0.02
+                    ? `${a.name} holds ${occupationLabel(aHolds)} of ${b.name}.`
+                    : bHolds > 0.02
+                      ? `${b.name} holds ${occupationLabel(bHolds)} of ${a.name}.`
+                      : 'Neither side has taken any ground worth the name.'}
+                  {w.supporters.israel ? ` Our aircraft fly for ${s.nations[w.supporters.israel].name}.` : ''}
+                </div>
+                <Choices
+                  options={regionalWarOptions(s, w)}
+                  selected={d.regional[warKey(w)]}
+                  onSelect={(x) => h.setRegional(warKey(w), x)}
+                />
+              </div>
+            );
+          })
+        )}
+      </Panel>
+    </>
+  );
+}
 
 
 /**
@@ -137,11 +275,13 @@ export function ForeignOffice({
   setDiplomatic,
   setIntel,
   setPower,
+  alliances,
 }: {
   s: GameState;
   setDiplomatic: (id: NationId, d: DiplomaticDirective) => void;
   setIntel: (id: NationId, d: IntelDirective) => void;
   setPower: (id: PowerId, d: PowerDirective) => void;
+  alliances: AllianceHandlers;
 }) {
   const [selected, setSelected] = useState<NationId>('syria');
   const [view, setView] = useState<ForeignView>('relations');
@@ -187,7 +327,13 @@ export function ForeignOffice({
       </Panel>
 
       <div>
-        <SubTabs items={FOREIGN_VIEWS} selected={view} onSelect={setView} />
+        <SubTabs
+          items={FOREIGN_VIEWS.map((v) =>
+            v.id === 'alliances' ? { ...v, dot: s.obligations.length > 0 } : v,
+          )}
+          selected={view}
+          onSelect={setView}
+        />
 
         {view === 'relations' && (
           <Panel title={`${n.name} — official news`}>
@@ -222,7 +368,7 @@ export function ForeignOffice({
               <Row label="At war with" value={n.atWarWith.join(', ')} tone="red" />
             )}
             {n.pactWith.length > 0 && (
-              <Row label="Military pacts" value={n.pactWith.join(', ')} tone="teal" />
+              <Row label="Defence treaties" value={n.pactWith.join(', ')} tone="teal" />
             )}
             {n.hasNuclear && <Row label="Nuclear" value="ARMED" tone="red" />}
             </div>
@@ -238,6 +384,23 @@ export function ForeignOffice({
             />
           </Panel>
         )}
+
+        {view === 'relations' && n.isFront && s.fronts[selected as 'syria'].atWar && (
+          <Panel title="Seek mediation">
+            <p className="small faint" style={{ marginTop: 0 }}>
+              A third party makes a ceasefire likelier than asking them ourselves, and names
+              its own price if it works: Washington wants undertakings, a neighbour wants the
+              ground handed back.
+            </p>
+            <Choices
+              options={mediatorOptions(s, selected)}
+              selected={s.directives.mediation[selected]}
+              onSelect={(m) => alliances.setMediation(selected, m)}
+            />
+          </Panel>
+        )}
+
+        {view === 'alliances' && <Alliances s={s} h={alliances} />}
 
         {view === 'intelligence' && (
           <Panel

@@ -39,6 +39,11 @@ export interface FactionSeed {
   /** How it fights, which decides what it costs us. */
   method: 'raids' | 'unrest';
   character: string;
+  /**
+   * Fires when its patron wants it to, not when its host allows it. Tehran's
+   * opinion of us decides how often Hezbollah provokes us; Beirut's does not.
+   */
+  patronDriven?: boolean;
 }
 
 export const FACTIONS: FactionSeed[] = [
@@ -53,6 +58,7 @@ export const FACTIONS: FactionSeed[] = [
     support: 62,
     method: 'raids',
     character: 'Tehran pays, Damascus permits, and the withdrawal made it famous.',
+    patronDriven: true,
   },
   {
     id: 'hamas',

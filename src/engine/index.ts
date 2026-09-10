@@ -20,7 +20,15 @@ export type { Origin } from '../data/equipment';
 export * from './ladders';
 export { Rng } from './rng';
 export { createGame, emptyDirectives, freeBrigades, activeWars } from './state';
-export { diplomaticOptions, canInvade } from './diplomacy';
+export {
+  diplomaticOptions,
+  canInvade,
+  jointOptions,
+  jointPartners,
+  mediatorOptions,
+  obligationOptions,
+  regionalWarOptions,
+} from './diplomacy';
 export {
   intelOptions,
   EXTREME_THRESHOLD,
@@ -37,13 +45,27 @@ export {
   enemyStrength,
 } from './military';
 export { assess, confidenceLabel, coverage } from './assessment';
-export { findWar, groundHeld, occupations } from './wars';
+export { findWar, groundHeld, occupations, warKey } from './wars';
 export type { Occupation } from './wars';
 export { previewTurn } from './preview';
 export type { QueuedEffect } from './preview';
-export { factionOptions, factionsIn } from './factions';
+export {
+  INCIDENT_TITLE,
+  factionOptions,
+  factionsIn,
+  provocationChance,
+  responseOptions,
+  tehranPressure,
+} from './factions';
 export { successorOptions, successorsOf } from './factions';
-export type { FactionDirective, FactionStatus, SuccessorStatus } from './factions';
+export type {
+  FactionDirective,
+  FactionStatus,
+  Incident,
+  ResponseOption,
+  SuccessorStatus,
+} from './factions';
+export type { IncidentResponse } from '../data/responses2000';
 export type { Assessment } from './assessment';
 export {
   LOBBY_COST,
@@ -58,11 +80,15 @@ export {
 export type { Demand, PowerDirective, PowerId, PowerStatus } from './powers';
 export {
   MAJORITY,
+  appeaseOptions,
   coalitionReport,
   coalitionSeats,
+  electionAvailable,
+  electionOutlook,
   hasMajority,
+  pendingCabinetEvent,
 } from './coalition';
-export type { PartnerStatus } from './coalition';
+export type { AppeaseAction, AppeaseOption, PartnerStatus } from './coalition';
 export {
   industryReport,
   industrySpend,

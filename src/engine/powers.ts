@@ -12,7 +12,8 @@
  * tell you what they want.
  */
 
-import type { GameState, NationId } from './types';
+import type { FrontId, GameState, NationId, RegionalWar } from './types';
+import { FRONTS } from './types';
 import { clamp } from './ladders';
 import type { Rng } from './rng';
 import { coalitionReact } from './coalition';
@@ -126,6 +127,56 @@ export function coalitionBuilding(s: GameState): boolean {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Flying with us
+// ---------------------------------------------------------------------------
+
+/** What each Western air force is worth on a front, in combat weight. */
+export const WESTERN_WEIGHT: Record<PowerId, number> = {
+  usa: 600,
+  britain: 250,
+  france: 200,
+};
+
+/** How warm a capital has to be before it will put aircraft into our war. */
+export const SUPPORT_THRESHOLD: Record<PowerId, number> = {
+  usa: 60,
+  britain: 55,
+  france: 65,
+};
+
+export type SupportableWar =
+  | { kind: 'front'; id: FrontId; enemy: NationId }
+  | { kind: 'regional'; war: RegionalWar; side: NationId; enemy: NationId };
+
+/**
+ * Wars a Western capital could be asked to join: against a state on the
+ * State Department's list, and not one we started — unless Washington has
+ * since decided it is fighting the same war.
+ */
+export function supportableWars(s: GameState): SupportableWar[] {
+  const out: SupportableWar[] = [];
+  for (const f of FRONTS) {
+    const front = s.fronts[f];
+    if (!front.atWar || !TERROR_LIST.includes(f)) continue;
+    if (front.startedByUs && !warOnTerror(s)) continue;
+    out.push({ kind: 'front', id: f, enemy: f });
+  }
+  for (const w of s.wars) {
+    const side = w.supporters.israel;
+    if (!side) continue;
+    const enemy = side === w.a ? w.b : w.a;
+    if (TERROR_LIST.includes(enemy)) out.push({ kind: 'regional', war: w, side, enemy });
+  }
+  return out;
+}
+
+const CAPITAL: Record<PowerId, string> = {
+  usa: 'Washington',
+  britain: 'London',
+  france: 'Paris',
+};
+
 /** Have we bombed a government, as opposed to an armed group, this half-year? */
 function struckAStateRecently(s: GameState): boolean {
   return Object.values(s.lastStruck).some((t) => t !== undefined && s.turn - t < 6);
@@ -175,7 +226,7 @@ export function demandOf(s: GameState, id: PowerId): Demand {
   return null;
 }
 
-export type PowerDirective = 'none' | 'lobby' | 'concede' | 'defy';
+export type PowerDirective = 'none' | 'lobby' | 'concede' | 'defy' | 'request_support';
 
 export interface PowerOption {
   id: PowerDirective;
@@ -220,6 +271,23 @@ export function powerOptions(s: GameState, id: PowerId): PowerOption[] {
     id: 'defy',
     label: 'Reject their demands publicly',
     ...(demand ? {} : { disabledReason: 'There is nothing on the table to reject.' }),
+  });
+
+  const wars = supportableWars(s);
+  opts.push({
+    id: 'request_support',
+    label: `Ask ${CAPITAL[id]} to put aircraft into the campaign`,
+    ...(wars.length === 0
+      ? { disabledReason: 'We are not fighting anybody they would fight alongside us.' }
+      : rel < SUPPORT_THRESHOLD[id]
+        ? { disabledReason: `${POWER_NAMES[id]} will not be drawn into our war on these terms.` }
+        : wars.every((w) =>
+              w.kind === 'front'
+                ? s.fronts[w.id].westernSupport.includes(id)
+                : w.war.supporters.powers[id] !== undefined,
+            )
+          ? { disabledReason: 'They are already flying with us.' }
+          : {}),
   });
 
   opts.push({ id: 'none', label: 'Take no action' });
@@ -291,6 +359,38 @@ export function resolvePowers(s: GameState, rng: Rng): PowerEvent[] {
           category: 'diplomacy',
           weight: 2,
         });
+        break;
+      }
+
+      case 'request_support': {
+        const wars = supportableWars(s);
+        if (wars.length === 0 || relationsWith(s, id) < SUPPORT_THRESHOLD[id]) break;
+        power.patience = clamp(power.patience - 30, 0, 100);
+        const enemies = [...new Set(wars.map((w) => s.nations[w.enemy].name))].join(' and ');
+        if (rng.chance(0.75)) {
+          for (const w of wars) {
+            if (w.kind === 'front') {
+              const front = s.fronts[w.id];
+              if (!front.westernSupport.includes(id)) front.westernSupport.push(id);
+            } else {
+              w.war.supporters.powers[id] = w.side;
+            }
+          }
+          // Asking is not free even when the answer is yes.
+          adjustRelations(s, id, -2);
+          events.push({
+            text: `${name} joins the campaign against ${enemies}`,
+            category: 'diplomacy',
+            weight: 3,
+          });
+        } else {
+          adjustRelations(s, id, -3);
+          events.push({
+            text: `${name} declines to join Israel’s war with ${enemies}`,
+            category: 'diplomacy',
+            weight: 1,
+          });
+        }
         break;
       }
 

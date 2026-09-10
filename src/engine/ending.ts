@@ -36,6 +36,12 @@ const ENDING_TEXT: Record<EndingKind, { headline: string; body: string }> = {
     body:
       'As Israel erupts into civil strife, you wonder if you could have done any better.',
   },
+  defeated_at_polls: {
+    headline: 'Premier concedes defeat as the country votes him out',
+    body:
+      'You went to the country and the country answered. It is the most honourable way ' +
+      'to lose office in this region, and you wonder whether you should have waited.',
+  },
   assassinated: {
     headline: 'The Israeli premier has been assassinated',
     body: 'As the soldiers come to take you away, you wonder if you could have done any better.',
@@ -132,6 +138,8 @@ export function computeEnding(s: GameState, kind: EndingKind): Ending {
   if (kind === 'survived') score += 60;
   if (kind === 'invaded' || kind === 'assassinated') score -= 120;
   if (kind === 'removed_by_knesset') score -= 80;
+  // Losing a vote you called is a better end than being thrown out by the House.
+  if (kind === 'defeated_at_polls') score -= 40;
   if (kind === 'holocaust') score = Math.min(score, -200);
   if (kind === 'holocaust_bystander') score = Math.min(score, 0);
   score = Math.round(score);

@@ -648,7 +648,115 @@ stops pressing us about strikes on anybody who is not a government. For the
 first three months, though, it is assembling a coalition that needs Arab
 capitals in the room, and an Israeli raid on a state costs twice as much.
 
-## 15. Deliberate omissions
+## 15. Alliances
+
+A pact used to lower an enemy's appetite for attacking us and do nothing else.
+A treaty is now a promise to be on somebody's side, and it is called in from
+both directions.
+
+When we are attacked, every state with a defence treaty with Israel finds out
+what it signed: the warm ones march, and their armies count on our side of
+the line the way the enemy's allies always counted on theirs; the lukewarm
+ones find a reason not to, and a treaty nobody honours is not a treaty any
+more. When a partner is attacked, the question comes to our cabinet — once,
+for a month — and silence is an answer. Staying out kills the treaty, costs
+prestige, and every other government with a treaty draws its conclusions.
+Honouring it puts Israeli aircraft over the aggressor, and if the aggressor
+is a neighbour, opens a front of our own. The other states' treaties work the
+same way among themselves, except that they send help rather than declare war.
+
+A **joint offensive** is only offered against an enemy the partner already
+despises: nobody in Cairo invades Libya because Jerusalem asked, only because
+Cairo was halfway there already. Against a neighbour it is our invasion with
+the partner beside us; against a far capital it is the partner's war, with
+our air force over it. It costs the partner its standing in the Arab world.
+
+**Mediation** makes a ceasefire likelier than asking for one ourselves, and
+the mediator names its price if it works: Washington wants undertakings, and
+a neighbour wants the ground handed back. Israel can offer to mediate other
+people's wars when both sides will have us in the room, and Cairo and Amman
+sometimes do it without being asked. **A Western air force** will fly against
+a state on the State Department's list, in a war we did not start — unless
+Washington has since decided it is fighting the same war — and wants
+undertakings afterwards.
+
+Every Israeli war now begins through one door, `openFront`, whoever opens it.
+
+## 16. Before the cabinet
+
+The coalition was something that happened to the premier: partners reacted
+to what he did abroad and walked out when they had had enough. That is half of
+it. The other half is what a coalition asks of its own leader — a school
+network that has run out of money, a turbine that has to be moved on the
+Sabbath, a ministry two partners both want. A dozen such questions come before
+the cabinet, each worded as who is pleased and who is not, each with a
+fallback that happens if nobody decides, and a small price for being seen not
+to.
+
+A fourth axis, religion and state, is where Shas and Shinui cannot both be
+satisfied, and where most coalitions of the period actually broke. Likud and
+Shinui sit outside the government. They settle toward their own opinion of
+us rather than toward indifference — left to drift like everybody else, Likud
+joined a Barak government on its own inside a year — so they have to be
+brought in on purpose, or offered a unity government during an intifada.
+
+One favour a month, for one party: money for its institutions, a ministry,
+a seat in the security cabinet, or the thing it wants most, which somebody
+else will mind. A government that has lost its majority can go to the country;
+the polls decide it, mostly, and losing is a new ending.
+
+## 17. Tehran's proxy
+
+Hezbollah fired at a rate set by its own strength, and the border's temper
+followed Beirut's relations with us. Both were wrong in the same way: the
+group answers to Tehran. It now provokes us as often as Tehran wants — at the
+June 2000 rate while Iran is as hostile as it was then, far less as Tehran
+warms, and much more for six months after we bomb Iran. A Beirut that is
+making its peace with us is humiliated by an attack rather than blamed for
+it, and can be pressed to put its army between Hezbollah and the border,
+which is the only lever on the group that goes through a government.
+
+Every attack is a question the cabinet must answer, and every answer is paid
+for three times — at home, in the region and in the West — never in the same
+coin. Restraint plays in Washington and not in Kiryat Shmona; punishing Beirut
+plays in Kiryat Shmona and costs the Arab world and Paris; hitting Syrian
+positions reins Hezbollah in and risks Damascus; a killing in Beirut is
+answered, sometimes, at an embassy somewhere else. Silence counts as
+restraint, with the cost of having said nothing. A hard answer to a patron
+that wants a fight can open a rocket campaign, which only a brokered
+ceasefire ends.
+
+**This was the second change allowed through the floor, and the first
+version was wrong twice.** Tehran's pressure started at one and a quarter
+rather than one, which with every raid now needing an answer meant nearly two
+a year; and restraint's cost with the right, at three times its present
+size, pushed the NRP and Yisrael BaAliyah — who open close to leaving — out
+of the government after a year of letters to the U.N. With both corrected:
+
+| 120 passive signers | survived |
+| --- | --- |
+| no Hezbollah at all | 33 |
+| as built, never answering | 22 |
+| answering every attack with restraint | 24 |
+| answering every attack by returning fire | 21 |
+
+The answers barely matter to a premier who does nothing else; the questions
+existing is what costs. That was the point of asking them, so the floor moved
+from 20% to 15% by decision rather than the questions being made free.
+
+Where the whole pass landed:
+
+| | survived | invaded | removed | assassinated | victory |
+| --- | --- | --- | --- | --- | --- |
+| passive, signs everything | 22 | 33 | 53 | 12 | 0 |
+| passive, refuses everything | 0 | 0 | 88 | 32 | 0 |
+| strategist (of 80) | 1 | 0 | 55 | 21 | 3 |
+
+The strategist — which answers no cabinet question, no treaty and no attack —
+still wins, just, and still beats passivity. Refusing Camp David still wins
+nothing.
+
+## 18. Deliberate omissions
 
 - **The original pixel art is not used.** The decoders work and the assets are
   fully recoverable (`tools/decode_assets.py`). The map borrows the original's
@@ -664,7 +772,8 @@ capitals in the room, and an Israeli raid on a state costs twice as much.
   fund rather than something you watch move.
 - **The reference bots do not use half of what has been built.** They never
   run agents, open a production line, lobby a capital, back a successor, fly
-  a long-range raid or shop anywhere but Washington, so
+  a long-range raid, shop anywhere but Washington, or answer a cabinet
+  question, a treaty or an attack on the northern border, so
   every balance figure in this document is what happens to a player who
   ignores five phases of mechanics. The real ceiling is higher and nobody has
   measured it.

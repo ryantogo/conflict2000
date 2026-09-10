@@ -13,6 +13,7 @@ import { clamp, pointsToRelations } from '../engine/ladders';
 import type { Rng } from '../engine/rng';
 import { expand } from './headlines';
 import { adjustRelations } from '../engine/powers';
+import { raiseIncident } from '../engine/factions';
 
 /** The chance the September 2001 plot is broken up before it is carried out. */
 export const NINE_ELEVEN_FOILED = 0.15;
@@ -84,15 +85,21 @@ export const SCRIPTED: ScriptedEvent[] = [
   // The Second Intifada used to be here, on rails for 28 September 2000. It is
   // now a monthly hazard in `palestine.ts`, shaped by how Camp David ended.
   {
-    // 7 October 2000.
+    // 7 October 2000. Tehran's decision, not Beirut's: it happens if
+    // Hezbollah can do it and Iran still wants it done.
     id: 'hezbollah-abduction',
     year: 2000,
     month: 9,
-    when: (s) => !s.nations.lebanon.collapsed && s.nations.lebanon.oppositionStrength > 45,
+    when: (s) =>
+      !!s.factions.hezbollah?.active &&
+      s.factions.hezbollah.strength > 35 &&
+      !s.nations.iran.collapsed &&
+      s.nations.iran.relations <= 3,
     fire: (s) => {
       s.fronts.lebanon.enemyActivity = Math.max(s.fronts.lebanon.enemyActivity, 2);
       s.israel.popularity = clamp(s.israel.popularity - 6, 0, 100);
       s.tension = clamp(s.tension + 7, 0, 100);
+      raiseIncident(s, 'hezbollah', 'abduction');
       return [
         { text: 'Three soldiers seized on the Blue Line', weight: 3 },
         { text: 'Knesset demands answers as border erupts again', weight: 1 },

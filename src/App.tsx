@@ -1,14 +1,19 @@
 import { useCallback, useState } from 'react';
 import type {
+  AppeaseAction,
   DiplomaticDirective,
   FrontId,
   GameState,
   IntelDirective,
   NationId,
   FactionDirective,
+  IncidentResponse,
+  MediatorId,
+  ObligationAnswer,
   PolicingDirective,
   PowerDirective,
   PowerId,
+  RegionalWarDirective,
   RemoteDirective,
   RemoteId,
   StrategicDirective,
@@ -86,6 +91,46 @@ export default function App() {
     setStrategic: (id: FrontId, d: StrategicDirective) => {
       if (game.directives.strategic[id] === d) delete game.directives.strategic[id];
       else game.directives.strategic[id] = d;
+      touch();
+    },
+    setJoint: (partner: NationId, target: NationId) => {
+      const j = game.directives.joint;
+      game.directives.joint =
+        j && j.partner === partner && j.target === target ? null : { partner, target };
+      touch();
+    },
+    setMediation: (enemy: NationId, m: MediatorId) => {
+      if (game.directives.mediation[enemy] === m) delete game.directives.mediation[enemy];
+      else game.directives.mediation[enemy] = m;
+      touch();
+    },
+    setRegional: (key: string, d: RegionalWarDirective) => {
+      if (game.directives.regional[key] === d || d === 'none') delete game.directives.regional[key];
+      else game.directives.regional[key] = d;
+      touch();
+    },
+    setObligation: (id: string, a: ObligationAnswer) => {
+      if (game.directives.obligations[id] === a) delete game.directives.obligations[id];
+      else game.directives.obligations[id] = a;
+      touch();
+    },
+    setIncidentResponse: (id: string, r: IncidentResponse) => {
+      if (game.directives.incidentResponse[id] === r) delete game.directives.incidentResponse[id];
+      else game.directives.incidentResponse[id] = r;
+      touch();
+    },
+    setCabinetChoice: (id: string) => {
+      game.directives.cabinetChoice = game.directives.cabinetChoice === id ? null : id;
+      touch();
+    },
+    setAppease: (party: string, action: AppeaseAction) => {
+      const a = game.directives.appease;
+      game.directives.appease =
+        a && a.party === party && a.action === action ? null : { party, action };
+      touch();
+    },
+    setElection: (v: boolean) => {
+      game.directives.callElection = v;
       touch();
     },
     setRemote: (id: RemoteId, d: RemoteDirective) => {

@@ -47,7 +47,14 @@ import {
   WAR_LOSSES,
   expand,
 } from '../data/headlines';
-import { TERROR_LIST, adjustRelations, coalitionBuilding, warOnTerror } from './powers';
+import {
+  TERROR_LIST,
+  WESTERN_WEIGHT,
+  adjustRelations,
+  coalitionBuilding,
+  warOnTerror,
+} from './powers';
+import { openFront } from './wars';
 
 export interface StrategicOption {
   id: StrategicDirective;
@@ -375,10 +382,7 @@ export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
         if (!inv.ok) break;
         s.stats.warsStarted++;
         s.stats.actsOfViolence += 2;
-        front.atWar = true;
-        front.warMonths = 0;
-        front.warProgress = 12; // surprise weight on the first month
-        n.atWarWith.push('israel');
+        openFront(s, id, true, 12); // surprise weight on the first month
         n.relationsPoints = -100;
         n.relations = 0;
         s.tension = clamp(s.tension + 18, 0, 100);
@@ -490,9 +494,7 @@ function resolveStrike(
   // A strike is very often the thing that starts the shooting.
   const front = s.fronts[id];
   if (!front.atWar && rng.chance(0.45)) {
-    front.atWar = true;
-    front.warMonths = 0;
-    n.atWarWith.push('israel');
+    openFront(s, id, true, 0);
     s.stats.warsStarted++;
     out.push({
       text: expand('* strike bombing of _ starts war', ctx),
@@ -757,8 +759,17 @@ function retaliate(s: GameState, id: RemoteId, success: boolean, rng: Rng): Mili
 
 /** Total combat weight Israel has on one front. */
 export function israeliStrength(s: GameState, id: FrontId): number {
-  const d = s.fronts[id].deployed;
-  return d.brigades * 100 + israeliEquipmentWeight(d.equipment, s.israel.readiness);
+  const front = s.fronts[id];
+  const d = front.deployed;
+  let w = d.brigades * 100 + israeliEquipmentWeight(d.equipment, s.israel.readiness);
+  // Treaty partners on our side count the way the enemy's pile-in always has.
+  for (const ally of front.allies) {
+    const a = s.nations[ally];
+    if (!a.collapsed) w += a.forces.brigades * 22 + enemyEquipmentWeight(a.forces.equipment) * 0.25;
+  }
+  // And a Western air force is worth a great deal, for as long as it stays.
+  for (const p of front.westernSupport) w += WESTERN_WEIGHT[p];
+  return w;
 }
 
 /**

@@ -74,8 +74,14 @@ describe('balance', () => {
     // routes a passive signer onto a track that was always fatal to passivity.
     // Survival fell from roughly 43% to roughly 22%, and the decision was taken
     // to keep the history (Arafat did walk out) rather than the old number.
-    // What the floor still guards is that signing is survivable at all.
-    expect(survived / N).toBeGreaterThan(0.2);
+    //
+    // It was moved once more for the northern border. Every Hezbollah attack
+    // is now a question the cabinet must answer, and this bot never answers
+    // anything: survival settled near 18%. Answering every attack perfectly
+    // would only have reached 20%, so the cost is the questions existing, not
+    // the answers — and that was the point of asking them. What the floor
+    // still guards is that signing is survivable at all.
+    expect(survived / N).toBeGreaterThan(0.15);
     // Doing nothing must not be a winning strategy either.
     expect((dist.victory ?? 0) / N).toBeLessThan(0.1);
   });

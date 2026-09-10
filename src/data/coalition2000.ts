@@ -18,6 +18,23 @@
  * together and destroy it depending on who is in it.
  */
 
+/**
+ * Something a single party wants badly enough to be bought with, and which
+ * somebody else will mind. Effects are in the cabinet's own vocabulary; see
+ * `CabinetEffect` in `cabinet2000.ts`.
+ */
+export interface PetConcession {
+  label: string;
+  /** Who is pleased and who is not, in words, for the choice line. */
+  detail: string;
+  effect: {
+    party?: Record<string, number>;
+    funds?: number;
+    usa?: number;
+    unrest?: number;
+  };
+}
+
 export interface Partner {
   id: string;
   name: string;
@@ -37,8 +54,24 @@ export interface Partner {
    * Positive means they notice and mind.
    */
   welfare: number;
+  /**
+   * Religion and state: the draft exemption, the Sabbath, civil marriage, the
+   * rabbinate. Positive wants more of it. This is the axis on which Shas and
+   * Shinui cannot both be satisfied, and on which most Israeli coalitions of
+   * the period actually broke.
+   */
+  religious: number;
   /** True for the premier's own bloc, which cannot walk out on itself. */
   ownParty?: boolean;
+  /**
+   * Outside the government at the start and not waiting to come back: they
+   * settle toward `resting` rather than toward indifference, and have to be
+   * brought in on purpose.
+   */
+  courtable?: boolean;
+  resting?: number;
+  /** The concession that buys them, and what it costs elsewhere. */
+  pet?: PetConcession;
 }
 
 /** A government needs a simple majority of the 120 seats. */
@@ -63,6 +96,7 @@ export const PARTNERS: Partner[] = [
     territorial: 0.6,
     hawkish: -0.2,
     welfare: 0.4,
+    religious: -0.2,
     ownParty: true,
   },
   {
@@ -75,6 +109,12 @@ export const PARTNERS: Partner[] = [
     territorial: -0.55,
     hawkish: 0.2,
     welfare: 1.0,
+    religious: 1.0,
+    pet: {
+      label: 'Restore the yeshiva stipends — $30 M',
+      detail: 'Shas delighted · Shinui and Meretz appalled',
+      effect: { funds: -30, party: { shas: 15, shinui: -8, meretz: -4 } },
+    },
   },
   {
     id: 'meretz',
@@ -84,6 +124,12 @@ export const PARTNERS: Partner[] = [
     territorial: 1.0,
     hawkish: -0.8,
     welfare: 0.6,
+    religious: -0.9,
+    pet: {
+      label: 'Freeze new settlement tenders',
+      detail: 'Meretz reassured · the National Religious Party and Likud furious · Washington pleased',
+      effect: { party: { meretz: 15, nrp: -10, likud: -6 }, usa: 3 },
+    },
   },
   {
     id: 'centre',
@@ -93,6 +139,12 @@ export const PARTNERS: Partner[] = [
     territorial: 0.2,
     hawkish: 0.3,
     welfare: 0.0,
+    religious: -0.3,
+    pet: {
+      label: 'Give the generals a seat in the peace negotiations',
+      detail: 'The Centre flattered · Meretz a little uneasy',
+      effect: { party: { centre: 14, meretz: -3 } },
+    },
   },
   {
     id: 'yisrael_baaliyah',
@@ -102,6 +154,12 @@ export const PARTNERS: Partner[] = [
     territorial: -0.5,
     hawkish: 0.6,
     welfare: 0.5,
+    religious: -0.6,
+    pet: {
+      label: 'An immigrant absorption package — $30 M',
+      detail: 'Yisrael BaAliyah grateful · nobody else much minds',
+      effect: { funds: -30, party: { yisrael_baaliyah: 15 } },
+    },
   },
   {
     id: 'nrp',
@@ -111,6 +169,12 @@ export const PARTNERS: Partner[] = [
     territorial: -1.0,
     hawkish: 0.8,
     welfare: -0.2,
+    religious: 0.6,
+    pet: {
+      label: 'Approve new housing in the settlements',
+      detail: 'The NRP satisfied · Meretz furious · Washington displeased · the territories notice',
+      effect: { party: { nrp: 16, meretz: -12 }, usa: -4, unrest: 0.4 },
+    },
   },
   {
     id: 'utj',
@@ -120,6 +184,48 @@ export const PARTNERS: Partner[] = [
     territorial: -0.4,
     hawkish: 0.0,
     welfare: 0.9,
+    religious: 1.0,
+    pet: {
+      label: 'Widen the Torah-study draft deferrals',
+      detail: 'United Torah Judaism content · Shinui, Yisrael BaAliyah and Meretz angry',
+      effect: { party: { utj: 15, shinui: -10, yisrael_baaliyah: -6, meretz: -5 } },
+    },
+  },
+
+  // --- outside the government in June 2000, and not waiting to come back ---
+  {
+    id: 'likud',
+    name: 'Likud',
+    seats: 19,
+    character: 'The opposition. Sharon leads it, and would join a unity government on his terms.',
+    territorial: -0.9,
+    hawkish: 0.8,
+    welfare: 0.1,
+    religious: 0.1,
+    courtable: true,
+    resting: 22,
+    pet: {
+      label: 'Take a hard line on Jerusalem in public',
+      detail: 'Likud warms to us · Meretz furious · Washington uneasy',
+      effect: { party: { likud: 14, meretz: -10 }, usa: -3 },
+    },
+  },
+  {
+    id: 'shinui',
+    name: 'Shinui',
+    seats: 6,
+    character: 'Secular and middle class. Against the haredi parties before anything else.',
+    territorial: 0.3,
+    hawkish: 0.0,
+    welfare: -0.3,
+    religious: -1.0,
+    courtable: true,
+    resting: 30,
+    pet: {
+      label: 'Table a secular core-curriculum bill',
+      detail: 'Shinui interested · Shas and United Torah Judaism outraged',
+      effect: { party: { shinui: 15, shas: -8, utj: -8 } },
+    },
   },
 ];
 
@@ -136,6 +242,8 @@ export const OPENING_SATISFACTION: Record<string, number> = {
   yisrael_baaliyah: 42,
   nrp: 34,
   utj: 40,
+  likud: 22,
+  shinui: 30,
 };
 
 export function partnerById(id: string): Partner | undefined {

@@ -3,12 +3,15 @@ import type {
   FactionDirective,
   FrontId,
   GameState,
+  IncidentResponse,
   RemoteDirective,
   RemoteId,
   StrategicDirective,
 } from '../engine';
 import {
   FRONTS,
+  INCIDENT_TITLE,
+  responseOptions,
   REACH,
   REGIONAL_NORM,
   REMOTE_IDS,
@@ -44,6 +47,49 @@ const FRONT_VIEWS: SubTabItem<FrontView>[] = [
     legend: 'What we believe is on the other side, and how much of it we can actually see.',
   },
 ];
+
+const INCIDENT_BODY: Record<string, string> = {
+  rockets:
+    'A salvo of Katyushas on the Galilee panhandle. Nobody killed this time. Beirut says it ' +
+    'knew nothing about it, and very probably did not.',
+  ambush:
+    'An IDF patrol hit by a roadside bomb and small-arms fire on the Blue Line. There are ' +
+    'dead, and the families are already on the radio.',
+  abduction:
+    'Soldiers taken across the border in a raid. Hezbollah wants prisoners for them, and ' +
+    'the country wants them home.',
+};
+
+/**
+ * An attack on the northern border, waiting on the cabinet. Every answer is
+ * paid for at home, in the region and in the West, never in the same coin.
+ */
+function Incidents({
+  s,
+  setResponse,
+}: {
+  s: GameState;
+  setResponse: (id: string, r: IncidentResponse) => void;
+}) {
+  if (s.incidents.length === 0) return null;
+  return (
+    <>
+      {s.incidents.map((incident) => (
+        <Panel key={incident.id} title={`Incident on the northern border — ${INCIDENT_TITLE[incident.kind]}`}>
+          <p className="small dim" style={{ marginTop: 0 }}>
+            {INCIDENT_BODY[incident.kind]} Tehran’s hand is on it. The cabinet has to answer, and
+            saying nothing is an answer the country will hear.
+          </p>
+          <Choices
+            options={responseOptions(s, incident)}
+            selected={s.directives.incidentResponse[incident.id]}
+            onSelect={(r) => setResponse(incident.id, r)}
+          />
+        </Panel>
+      ))}
+    </>
+  );
+}
 
 /**
  * Iraq, Iran and Libya. No border, no army to mass against, and nothing on
@@ -107,11 +153,13 @@ export function Strategic({
   setStrategic,
   setRemote,
   setFaction,
+  setIncidentResponse,
 }: {
   s: GameState;
   setStrategic: (id: FrontId, d: StrategicDirective) => void;
   setRemote: (id: RemoteId, d: RemoteDirective) => void;
   setFaction: (id: string, d: FactionDirective) => void;
+  setIncidentResponse: (id: string, r: IncidentResponse) => void;
 }) {
   const [selected, setSelected] = useState<FrontId>('lebanon');
   const [view, setView] = useState<FrontView>('forces');
@@ -246,6 +294,8 @@ export function Strategic({
       </div>
 
       <div>
+        <Incidents s={s} setResponse={setIncidentResponse} />
+
         <Succession s={s} nation={selected} setFaction={setFaction} />
 
         <Militias

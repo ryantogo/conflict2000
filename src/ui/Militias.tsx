@@ -2,15 +2,19 @@ import type { GameState, NationId } from '../engine';
 import type { FactionDirective } from '../engine';
 import type { FactionHome } from '../data/factions2000';
 import {
+  deterrenceLabel,
   dispositionLabel,
   factionOptions,
   factionsIn,
   militiaLabel,
+  patronPressureLabel,
   successorOptions,
   successorsOf,
   supportLabel,
+  tehranPressure,
 } from '../engine';
 import { Choices, Panel, Row } from './bits';
+import { HINTS } from '../data/hints';
 
 
 /**
@@ -47,6 +51,20 @@ export function Militias({
           </div>
           <div className="rows">
             <Row label="Popular support" value={supportLabel(f.support)} />
+            {f.patronDriven && (
+              <>
+                <Row
+                  label="Deterrence"
+                  value={deterrenceLabel(f.deterrence)}
+                  tone={f.deterrence < 25 ? 'amber' : ''}
+                  hint={HINTS.deterrence}
+                />
+                <Row label="Their patron" value={patronPressureLabel(tehranPressure(s))} />
+                {f.escalation > 0 && (
+                  <Row label="Status" value="ROCKET CAMPAIGN" tone="red" />
+                )}
+              </>
+            )}
           </div>
           <div style={{ marginTop: 8 }}>
             <Choices

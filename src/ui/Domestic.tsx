@@ -1,11 +1,15 @@
-import type { FactionDirective, GameState, PolicingDirective } from '../engine';
+import type { AppeaseAction, FactionDirective, GameState, PolicingDirective } from '../engine';
 import {
   MAJORITY,
   standingLabel,
   POSTURE_LABEL,
   FINAL_STATUS_LABEL,
+  appeaseOptions,
   coalitionReport,
   coalitionSeats,
+  electionAvailable,
+  electionOutlook,
+  pendingCabinetEvent,
   mostDangerousThreat,
   policingOptions,
   postureReport,
@@ -37,6 +41,92 @@ const HOME_VIEWS: SubTabItem<HomeView>[] = [
 ];
 import { Militias } from './Militias';
 
+
+export interface CabinetHandlers {
+  setCabinetChoice: (id: string) => void;
+  setAppease: (party: string, action: AppeaseAction) => void;
+  setElection: (v: boolean) => void;
+}
+
+/** The question in front of the cabinet this month, if there is one. */
+function BeforeTheCabinet({ s, h }: { s: GameState; h: CabinetHandlers }) {
+  const ev = pendingCabinetEvent(s);
+  if (!ev) return null;
+  return (
+    <Panel title={`Before the cabinet — ${ev.title}`}>
+      <p className="small dim" style={{ marginTop: 0 }}>
+        {ev.body}
+      </p>
+      <Choices
+        options={ev.choices.map((c) => ({ id: c.id, label: c.label, detail: c.detail }))}
+        selected={s.directives.cabinetChoice ?? undefined}
+        onSelect={h.setCabinetChoice}
+      />
+      <p className="small faint" style={{ marginBottom: 0 }}>
+        If the cabinet does not decide, it will be decided for us — and the country will
+        notice that we did not.
+      </p>
+    </Panel>
+  );
+}
+
+/**
+ * Keeping the coalition together is not only a matter of not offending it.
+ * One favour a month, for one party, and every favour is noticed by somebody.
+ */
+function KeepingTheCoalition({ s, h }: { s: GameState; h: CabinetHandlers }) {
+  const parties = coalitionReport(s).filter((p) => !p.ownParty);
+  const [picked, setPicked] = useState<string>(parties[0]?.id ?? '');
+  const party = parties.find((p) => p.id === picked) ?? parties[0];
+  const queued = s.directives.appease;
+
+  return (
+    <Panel title="Keeping the coalition">
+      <div className="choices" style={{ marginBottom: 10 }}>
+        {parties.map((p) => (
+          <button
+            key={p.id}
+            className={`choice${party?.id === p.id ? ' selected' : ''}`}
+            onClick={() => setPicked(p.id)}
+          >
+            <span className="tick">{party?.id === p.id ? '▸' : ''}</span>
+            <span style={{ flex: 1, display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+              <span>
+                {p.name} · {p.seats}
+                {!p.inCoalition ? <span className="pill"> {p.courtable ? 'opposition' : 'outside'}</span> : null}
+                {queued?.party === p.id ? <span className="amber"> ●</span> : null}
+              </span>
+              <span className="mono small faint">{standingLabel(p.satisfaction)}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {party && (
+        <Choices
+          options={appeaseOptions(s, party.id)}
+          selected={queued?.party === party.id ? queued.action : undefined}
+          onSelect={(a) => h.setAppease(party.id, a)}
+        />
+      )}
+      {electionAvailable(s) && (
+        <div style={{ marginTop: 14 }}>
+          <div className="kicker">Go to the country</div>
+          <Choices
+            options={[
+              {
+                id: 'call' as const,
+                label: 'Call early elections',
+                detail: `${electionOutlook(s)} Win, and the arithmetic is redone from the result; lose, and it is over.`,
+              },
+            ]}
+            selected={s.directives.callElection ? 'call' : undefined}
+            onSelect={() => h.setElection(!s.directives.callElection)}
+          />
+        </div>
+      )}
+    </Panel>
+  );
+}
 
 /**
  * The arithmetic of staying in office. Popularity is what the country thinks;
@@ -113,21 +203,35 @@ export function Domestic({
   setPolicing,
   setFundNuclear,
   setFaction,
+  cabinet,
 }: {
   s: GameState;
   setPolicing: (d: PolicingDirective) => void;
   setFundNuclear: (v: boolean) => void;
   setFaction: (id: string, d: FactionDirective) => void;
+  cabinet: CabinetHandlers;
 }) {
   const p = s.palestine;
   const [view, setView] = useState<HomeView>('coalition');
 
   return (
     <div>
-      <SubTabs items={HOME_VIEWS} selected={view} onSelect={setView} />
+      <SubTabs
+        items={HOME_VIEWS.map((v) =>
+          v.id === 'coalition' ? { ...v, dot: !!s.cabinet.pending } : v,
+        )}
+        selected={view}
+        onSelect={setView}
+      />
 
       <div className="grid2">
         {view === 'coalition' && <Coalition s={s} />}
+        {view === 'coalition' && (
+          <div>
+            <BeforeTheCabinet s={s} h={cabinet} />
+            <KeepingTheCoalition s={s} h={cabinet} />
+          </div>
+        )}
 
         {view === 'territories' && (
           <Militias

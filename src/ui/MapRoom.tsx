@@ -207,7 +207,7 @@ function NationPanel({
             <Row label="At war with" value={n.atWarWith.join(', ')} tone="red" />
           )}
           {n.pactWith.length > 0 && (
-            <Row label="Military pacts" value={n.pactWith.join(', ')} tone="teal" />
+            <Row label="Defence treaties" value={n.pactWith.join(', ')} tone="teal" />
           )}
           <GroundRows s={s} id={id} />
         </div>

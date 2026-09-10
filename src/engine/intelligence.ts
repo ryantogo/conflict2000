@@ -373,6 +373,13 @@ export function collapseGovernment(
   for (const other of Object.values(s.nations)) {
     other.atWarWith = other.atWarWith.filter((x) => x !== id);
   }
+  // Nor is a government that no longer exists anybody's ally.
+  for (const f of Object.values(s.fronts)) f.allies = f.allies.filter((x) => x !== id);
+  for (const w of s.wars) {
+    delete w.supporters.nations[id];
+    if (w.supporters.israel === id) delete w.supporters.israel;
+  }
+  s.obligations = s.obligations.filter((o) => o.partner !== id && o.aggressor !== id);
   s.tension = clamp(s.tension + 5, 0, 100);
   // Any front against them goes quiet — there is nobody left to command it.
   if (n.isFront) {
@@ -380,6 +387,8 @@ export function collapseGovernment(
     front.atWar = false;
     front.enemyActivity = 0;
     front.warMonths = 0;
+    front.allies = [];
+    front.westernSupport = [];
   }
   s.log.unshift(`${n.name}: government collapsed (${cause}).`);
 

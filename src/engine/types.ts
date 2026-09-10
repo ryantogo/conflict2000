@@ -7,7 +7,9 @@
  */
 
 import type { PowerDirective, PowerId, PowerState } from './powers';
-import type { FactionDirective, FactionState } from './factions';
+import type { FactionDirective, FactionState, Incident } from './factions';
+import type { IncidentResponse } from '../data/responses2000';
+import type { AppeaseAction } from './coalition';
 
 export type NationId =
   | 'egypt'
@@ -63,7 +65,9 @@ export type DiplomaticDirective =
   | 'sign_pact'
   | 'break_pact'
   | 'reduce'
-  | 'ceasefire';
+  | 'ceasefire'
+  /** Lean on Beirut to put its army between Hezbollah and the border. */
+  | 'press_hezbollah';
 
 export type IntelDirective =
   | 'collect'
@@ -104,6 +108,26 @@ export const REMOTE_IDS: RemoteId[] = ['iraq', 'iran', 'libya'];
 
 export type RemoteDirective = 'none' | 'strike_military' | 'strike_industrial' | 'strike_nuclear';
 
+/** Who can broker a ceasefire: a Western capital, or a neighbour. */
+export type MediatorId = PowerId | NationId;
+
+/** What to do about a war the other states are fighting among themselves. */
+export type RegionalWarDirective = 'none' | 'mediate' | 'support_a' | 'support_b' | 'withdraw_support';
+
+export type ObligationAnswer = 'honour' | 'renege';
+
+/**
+ * A treaty partner has been attacked, and the treaty says we answer. It is
+ * put to the cabinet for one month, and silence is an answer.
+ */
+export interface Obligation {
+  id: string;
+  partner: NationId;
+  aggressor: NationId;
+  /** The turn it was raised; it is settled at the end of the next one. */
+  turn: number;
+}
+
 export type PolicingDirective =
   | 'none'
   | 'post_brigade'
@@ -122,6 +146,22 @@ export interface Directives {
   powers: Partial<Record<PowerId, PowerDirective>>;
   /** What to do about the armed groups that are not governments. */
   factions: Record<string, FactionDirective>;
+  /** A joint offensive proposed to a partner, one a month. */
+  joint: { partner: NationId; target: NationId } | null;
+  /** Who we have asked to broker a ceasefire in each of our wars. */
+  mediation: Partial<Record<NationId, MediatorId>>;
+  /** What we are doing about each war between the other states, by war key. */
+  regional: Record<string, RegionalWarDirective>;
+  /** Our answer to each treaty obligation that has fallen due. */
+  obligations: Record<string, ObligationAnswer>;
+  /** Our answer to the question in front of the cabinet, by choice id. */
+  cabinetChoice: string | null;
+  /** One favour a month for one party. */
+  appease: { party: string; action: AppeaseAction } | null;
+  /** Go to the country. */
+  callElection: boolean;
+  /** How we answer each attack on the northern border, by incident id. */
+  incidentResponse: Record<string, IncidentResponse>;
   policing: PolicingDirective;
   fundNuclear: boolean;
   /** Orders placed with suppliers this month; delivered after a lead time. */
@@ -253,6 +293,12 @@ export interface Front {
   occupation: number;
   /** 0..1 of Israel they hold. Handed back under any ceasefire. */
   lostGround: number;
+  /** Treaty partners fighting beside us on this front. */
+  allies: NationId[];
+  /** Western air forces flying for us on this front. */
+  westernSupport: PowerId[];
+  /** Whether this war was ours to start. Washington asks. */
+  startedByUs: boolean;
   /** U.N. has declared this a military-free zone after a settled war. */
   demilitarised: boolean;
   /**
@@ -295,6 +341,8 @@ export interface Israel {
   coalition: Record<string, { satisfaction: number; inCoalition: boolean }>;
   /** Set the month a no-confidence motion carries. Ends the game. */
   lostConfidence: boolean;
+  /** Set the month a snap election is lost. Ends the game. */
+  electionLost: boolean;
   /**
    * Months an undertaking given to a Western capital still binds us. While it
    * runs, the aggressive options are off the menu — with the reason shown,
@@ -409,6 +457,7 @@ export type GamePhase =
 export type EndingKind =
   | 'victory'
   | 'removed_by_knesset'
+  | 'defeated_at_polls'
   | 'assassinated'
   | 'invaded'
   | 'holocaust'
@@ -436,6 +485,8 @@ export interface RegionalWar {
   supporters: {
     israel?: NationId;
     powers: Partial<Record<PowerId, NationId>>;
+    /** Treaty partners of a side, sending help without declaring war. */
+    nations: Partial<Record<NationId, NationId>>;
   };
 }
 
@@ -489,6 +540,19 @@ export interface GameState {
   factions: Record<string, FactionState>;
   /** Wars between the other states. Israel's own wars live on `fronts`. */
   wars: RegionalWar[];
+  /** Treaty obligations waiting on an answer. */
+  obligations: Obligation[];
+  /** Attacks on us waiting on an answer. */
+  incidents: Incident[];
+  /** The coalition's standing business. */
+  cabinet: {
+    /** Id of the question in front of the cabinet this month. */
+    pending: string | null;
+    /** The turn the last question was settled. */
+    lastTurn: number;
+    /** When each favour was last done for each party, keyed `party:action`. */
+    cooldowns: Record<string, number>;
+  };
   /** Things that happen to the world, and change what it will tolerate. */
   world: {
     /** September 2001: whether it happened, was stopped, or has not come yet. */

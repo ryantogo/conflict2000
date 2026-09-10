@@ -301,6 +301,26 @@ export function loyaltyLabel(v: number): string {
   return 'Barely worth the paperwork';
 }
 
+/** How much an armed group expects to pay for its next attack. */
+export function deterrenceLabel(v: number): string {
+  if (v >= 70) return 'They think twice';
+  if (v >= 45) return 'Wary of us';
+  if (v >= 25) return 'Testing us';
+  return 'Undeterred';
+}
+
+/**
+ * How hard a patron is pushing its proxy, as Northern Command reads it. One
+ * is Tehran as it stood in June 2000; it only goes past that after we have
+ * given it a reason.
+ */
+export function patronPressureLabel(p: number): string {
+  if (p >= 1.4) return 'Tehran wants blood';
+  if (p >= 0.85) return 'Tehran is pushing them hard';
+  if (p >= 0.45) return 'Tehran keeps them busy';
+  return 'Tehran is holding them back';
+}
+
 /** How much of a country an army holds, as a newspaper would put it. */
 export function occupationLabel(share: number): string {
   if (share < 0.06) return 'a foothold';

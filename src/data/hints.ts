@@ -108,6 +108,10 @@ export const HINTS = {
     'A fallen state comes apart into the people who were holding it together. ' +
     'Arm one of them far enough and they form a government — and the ' +
     'government you get is the one you armed.',
+  deterrence:
+    'How much they expect to pay for the next attack. Hard answers raise it and ' +
+    'restraint spends it, and it fades either way. Tehran, not Beirut, decides ' +
+    'how often they test it.',
   disposition:
     'How this faction would treat us in power. Backing the ones who despise ' +
     'us is a way of arming our enemies at our own expense.',

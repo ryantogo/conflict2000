@@ -20,10 +20,10 @@ import {
 } from './ladders';
 import { Rng } from './rng';
 import { emptyDirectives, freeBrigades } from './state';
-import { endWar, expireMandates, resolveDiplomacy } from './diplomacy';
+import { endWar, expireMandates, resolveAlliances, resolveDiplomacy } from './diplomacy';
 import { driftInternals, resolveIntelligence } from './intelligence';
 import { redrawAssessments } from './assessment';
-import { resolveFactions, resolveSuccessors } from './factions';
+import { INCIDENT_TITLE, resolveFactions, resolveIncidents, resolveSuccessors } from './factions';
 import { resolveCombat, resolveRemote, resolveStrategic } from './military';
 import { resolveDeliveries, resolveReadiness, updateEmbargoes } from './arms';
 import { recomputeOverhead, resolveProduction } from './industry';
@@ -36,7 +36,15 @@ import {
 import { holocaustCheck, resolveNuclear } from './nuclear';
 import { runAi } from './ai';
 import { runRearmament } from './procurement';
-import { MAJORITY, coalitionReact, coalitionSeats, resolveCoalition } from './coalition';
+import {
+  MAJORITY,
+  coalitionReact,
+  coalitionSeats,
+  pendingCabinetEvent,
+  raiseCabinetEvent,
+  resolveCabinet,
+  resolveCoalition,
+} from './coalition';
 
 /**
  * What a Palestinian homeland is worth to each capital in the region, and it
@@ -132,6 +140,7 @@ export function resolveTurn(s: GameState): GameState {
     resolveDiplomacy(s, rng).map((t) => ({ text: t, weight: 0 })),
     'diplomacy',
   );
+  events.push(...resolveAlliances(s, rng));
   events.push(...resolveIntelligence(s, rng));
   events.push(...resolvePowers(s, rng));
   events.push(...resolveStrategic(s, rng));
@@ -139,7 +148,9 @@ export function resolveTurn(s: GameState): GameState {
   push(resolveNuclear(s, rng), 'nuclear');
   events.push(...resolvePalestine(s, rng));
   // The groups nobody governs move after the states do, because most of what
-  // they are reacting to is what the states just did.
+  // they are reacting to is what the states just did. Last month's attacks
+  // are answered before this month's are rolled.
+  events.push(...resolveIncidents(s, rng));
   events.push(...resolveFactions(s, rng));
   events.push(...resolveSuccessors(s, rng));
 
@@ -166,7 +177,8 @@ export function resolveTurn(s: GameState): GameState {
     'economy',
   );
   // The Knesset gets the last word, after everything that might have
-  // offended it has already happened.
+  // offended it has already happened — the cabinet's own business first.
+  events.push(...resolveCabinet(s, rng));
   events.push(...resolveCoalition(s, rng));
   updateMeters(s, rng);
 
@@ -186,6 +198,8 @@ export function resolveTurn(s: GameState): GameState {
   // 7. History, on its own schedule — and the territories, on theirs.
   push(runScripted(s, rng), 'diplomacy');
   events.push(...resolveOutbreak(s, rng));
+  // And the coalition, which always has something it wants.
+  events.push(...raiseCabinetEvent(s, rng));
 
   // 8. Endings.
   const ending = checkEndings(s, rng);
@@ -418,6 +432,25 @@ function buildBriefing(s: GameState): string[] {
     out.push('At the present we have conflict on two fronts. This could over stretch our defences.');
   if (wars.length >= 3)
     out.push('We are now surrounded by enemy attack. This could be serious...');
+
+  for (const incident of s.incidents) {
+    out.push(
+      `Northern Command: ${INCIDENT_TITLE[incident.kind].toLowerCase()}. ` +
+        'The cabinet must decide how to answer, and silence is an answer.',
+    );
+  }
+
+  const cabinet = pendingCabinetEvent(s);
+  if (cabinet) {
+    out.push(`Before the cabinet: ${cabinet.title.toLowerCase()}. It needs an answer this month.`);
+  }
+
+  for (const o of s.obligations) {
+    out.push(
+      `${s.nations[o.aggressor].name} has attacked ${s.nations[o.partner].name}. ` +
+        'The treaty obliges us to answer this month, and silence is an answer.',
+    );
+  }
 
   // Opportunities worth flagging.
   for (const id of NATION_IDS) {
@@ -959,6 +992,9 @@ function checkEndings(s: GameState, rng: Rng) {
   // Removed from office — by the House, or by the country.
   if (s.israel.lostConfidence) {
     return computeEnding(s, 'removed_by_knesset');
+  }
+  if (s.israel.electionLost) {
+    return computeEnding(s, 'defeated_at_polls');
   }
   if (s.israel.popularity <= 0) {
     return computeEnding(s, rng.chance(0.25) ? 'assassinated' : 'removed_by_knesset');

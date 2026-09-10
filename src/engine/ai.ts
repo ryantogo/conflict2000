@@ -18,7 +18,14 @@ import {
   WAR_DECLARED,
   expand,
 } from '../data/headlines';
-import { resolveRegionalWars, setInterArab, startRegionalWar } from './wars';
+import type { FrontId } from './types';
+import {
+  callTreatyPartners,
+  openFront,
+  resolveRegionalWars,
+  setInterArab,
+  startRegionalWar,
+} from './wars';
 
 export interface AiEvent {
   text: string;
@@ -168,10 +175,9 @@ export function runAi(s: GameState, rng: Rng): AiEvent[] {
       );
       const p = clamp((h - 60) / 320 + alliesJoining.length * 0.03, 0, 0.3);
       if (rng.chance(p)) {
-        front.atWar = true;
-        front.warMonths = 0;
-        front.warProgress = -10;
-        n.atWarWith.push('israel');
+        openFront(s, id as FrontId, false, -10);
+        // Everybody who signed a treaty with us finds out what it meant.
+        events.push(...callTreatyPartners(s, n.id, rng));
         s.tension = clamp(s.tension + 16, 0, 100);
         events.push({
           text: expand(rng.pick(WAR_DECLARED), {
@@ -188,10 +194,7 @@ export function runAi(s: GameState, rng: Rng): AiEvent[] {
 
         for (const ally of alliesJoining) {
           if (ally.isFront && !ally.atWarWith.includes('israel')) {
-            ally.atWarWith.push('israel');
-            const af = s.fronts[ally.id as 'egypt' | 'jordan' | 'lebanon' | 'syria'];
-            af.atWar = true;
-            af.warProgress = -10;
+            openFront(s, ally.id as FrontId, false, -10);
             events.push({
               text: expand('# joins in attack against _', {
                 subjName: ally.name,

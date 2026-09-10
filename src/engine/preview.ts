@@ -18,9 +18,11 @@ import { REACH } from './military';
 import { MOSSAD_CAPACITY, OP_FUNDS, committedCapacity } from './intelligence';
 import { LOBBY_COST, POWER_IDS, POWER_NAMES, RESTRAINT_MONTHS } from './powers';
 import { industrySpend } from './industry';
-import { coalitionSeats } from './coalition';
+import { coalitionSeats, electionOutlook, pendingCabinetEvent } from './coalition';
 import { MAJORITY, PARTNERS } from '../data/coalition2000';
 import { factionSeedById } from '../data/factions2000';
+import { responseById } from '../data/responses2000';
+import { INCIDENT_TITLE } from './factions';
 
 /** What funding the bomb costs for a month. */
 const NUCLEAR_MONTHLY = 55;
@@ -180,6 +182,49 @@ export function previewTurn(s: GameState): QueuedEffect[] {
     });
   }
 
+  // --- alliances -----------------------------------------------------------
+  for (const o of s.obligations) {
+    const partner = s.nations[o.partner].name;
+    const aggressor = s.nations[o.aggressor];
+    const answer = d.obligations[o.id];
+    if (answer === 'honour') {
+      out.push({
+        area: 'Treaties',
+        text:
+          `Honouring the treaty with ${partner} puts Israeli aircraft over ${aggressor.name}` +
+          (aggressor.isFront ? `, and opens the ${aggressor.adjective} front.` : '.'),
+        tone: 'warn',
+      });
+    } else {
+      out.push({
+        area: 'Treaties',
+        text:
+          `${answer ? 'Staying out' : 'Unanswered, the obligation is a refusal'}: the treaty ` +
+          `with ${partner} dies, and every other partner will draw its conclusions.`,
+        tone: 'bad',
+      });
+    }
+  }
+  if (d.joint) {
+    out.push({
+      area: 'Alliances',
+      text:
+        `A joint offensive with ${s.nations[d.joint.partner].name} against ` +
+        `${s.nations[d.joint.target].name} is a war of our choosing, if they agree to it.`,
+      tone: 'bad',
+    });
+  }
+  for (const [enemy, mediator] of Object.entries(d.mediation)) {
+    if (mediator !== 'usa') continue;
+    out.push({
+      area: 'Alliances',
+      text:
+        `If Washington brokers peace with ${s.nations[enemy as keyof typeof s.nations].name}, ` +
+        'it will want undertakings that bind us for months.',
+      tone: 'warn',
+    });
+  }
+
   // --- the powers ----------------------------------------------------------
   for (const id of POWER_IDS) {
     if (d.powers[id] !== 'defy') continue;
@@ -197,6 +242,51 @@ export function previewTurn(s: GameState): QueuedEffect[] {
     out.push({
       area: 'Armed groups',
       text: `Striking ${seed.name} will weaken them and recruit for them at the same time.`,
+    });
+  }
+
+  // --- the northern border -------------------------------------------------
+  for (const incident of s.incidents) {
+    const chosen = d.incidentResponse[incident.id];
+    const spec = chosen ? responseById(chosen) : null;
+    out.push(
+      spec
+        ? {
+            area: 'Northern Command',
+            text: `${spec.label}. ${spec.detail}.`,
+            ...(spec.escalation && spec.escalation >= 0.1 ? { tone: 'warn' as const } : {}),
+          }
+        : {
+            area: 'Northern Command',
+            text:
+              `${INCIDENT_TITLE[incident.kind]} has not been answered. Silence reads as ` +
+              'restraint abroad and as weakness at home.',
+            tone: 'warn',
+          },
+    );
+  }
+
+  // --- the cabinet ---------------------------------------------------------
+  const question = pendingCabinetEvent(s);
+  if (question) {
+    const chosen = question.choices.find((c) => c.id === d.cabinetChoice);
+    out.push(
+      chosen
+        ? { area: 'The cabinet', text: `${chosen.label}: ${chosen.detail}.` }
+        : {
+            area: 'The cabinet',
+            text:
+              `Nobody has decided about ${question.title.toLowerCase()}. It will be decided ` +
+              'for us, and the country will notice we did not.',
+            tone: 'warn',
+          },
+    );
+  }
+  if (d.callElection) {
+    out.push({
+      area: 'The Knesset',
+      text: `We go to the country. ${electionOutlook(s)} Losing ends the premiership.`,
+      tone: 'bad',
     });
   }
 
