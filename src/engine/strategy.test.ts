@@ -51,7 +51,11 @@ function playStrategist(seed: number, concedeHomeland = true): GameState {
       continue;
     }
     if (g.phase === 'budget') {
-      applyBudget(g, 'increase', true);
+      // Spend up, but not past what the economy will carry. A premier who
+      // raises the defence share every December for a decade ends up at a
+      // fifth of national product and loses the House over it, which is a
+      // failure of arithmetic rather than of strategy.
+      applyBudget(g, g.israel.gnpPercent < 11 ? 'increase' : 'maintain', true);
       continue;
     }
 

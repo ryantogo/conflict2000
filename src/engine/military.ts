@@ -44,6 +44,12 @@ export interface StrategicOption {
   disabledReason?: string;
 }
 
+/**
+ * Below this many thousand reservists the country is visibly scraping the
+ * barrel: mobilisation thins out and the political cost of the war doubles.
+ */
+export const RESERVE_STRAIN = 90;
+
 const STRIKE_LABELS: Record<string, string> = {
   strike_industrial: 'Tactical airstrike on industrial target',
   strike_military: 'Tactical airstrike on military target',
@@ -528,7 +534,10 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
     if (!front.mobilised && front.warProgress < -20) {
       front.mobilised = true;
       const st = s.israel.stockpile.equipment;
-      const brigades = Math.min(2, freeBrigades(s));
+      // You cannot mobilise a reserve you have already spent. A country
+      // scraping the barrel calls up one brigade where it would have called two.
+      const canCall = s.israel.reserves < RESERVE_STRAIN ? 1 : 2;
+      const brigades = Math.min(canCall, freeBrigades(s));
       const cats = ['tank', 'aircraft', 'helicopter', 'surveillance', 'sam'] as const;
       const called: typeof st = {};
       for (const cat of cats) mergeInto(called, drawFraction(st, 0.35, cat));
@@ -560,8 +569,18 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
     attrite(n.forces.equipment, theirLossRate, 'tank');
     attrite(n.forces.equipment, theirLossRate * 0.5, 'aircraft');
 
-    // Manpower comes out of the reserve pool.
-    s.israel.reserves = Math.max(0, s.israel.reserves - Math.round(ourLossRate * 60));
+    // Manpower comes out of the reserve pool, and the pool is a population
+    // rather than a number: a country of six million notices its casualties.
+    const casualties = Math.round(ourLossRate * 60);
+    s.israel.reserves = Math.max(0, s.israel.reserves - casualties);
+    if (casualties > 0) {
+      // War weariness is about the funerals, not the map. A campaign going
+      // well still costs you the House if it costs enough reservists.
+      coalitionMood(s, -casualties / 12);
+      if (s.israel.reserves < RESERVE_STRAIN) {
+        s.israel.popularity = clamp(s.israel.popularity - 2, 0, 100);
+      }
+    }
     // A brigade can only be destroyed if one is actually standing here, or the
     // national total would fall below what is committed elsewhere.
     if (front.deployed.brigades > 0 && rng.chance(ourLossRate)) {

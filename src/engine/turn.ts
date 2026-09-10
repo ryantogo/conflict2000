@@ -29,6 +29,20 @@ import { holocaustCheck, resolveNuclear } from './nuclear';
 import { runAi } from './ai';
 import { runRearmament } from './procurement';
 import { coalitionReact, coalitionSeats, resolveCoalition } from './coalition';
+
+/** Thousands of reservists it takes to stand up two brigades. */
+const BRIGADE_MANPOWER = 40;
+
+/** The reserve pool cannot grow past the population that feeds it. */
+const RESERVE_CEILING = 460;
+
+/**
+ * Share of national product the country will carry without complaint. Israel
+ * really was spending around 8.6% in 2000, which is enormous by any other
+ * standard and was already a live domestic argument. Past this, the parties
+ * that are in government for the welfare budget start counting.
+ */
+const GNP_TOLERANCE = 10.5;
 import { runScripted } from '../data/scripted';
 import { FILLER } from '../data/headlines';
 import { MASTHEADS } from '../data/nations2000';
@@ -196,6 +210,24 @@ function updateMeters(s: GameState, rng: Rng): void {
     isr.usRelations = clamp(isr.usRelations + (baseline - isr.usRelations) * 0.08, 0, 100);
   } else {
     isr.usRelations = clamp(isr.usRelations - 2, 0, 100);
+  }
+
+  // Guns and butter. A defence share the economy cannot carry is felt every
+  // month, not only in the December when it was voted through.
+  if (isr.gnpPercent > GNP_TOLERANCE) {
+    // Saturating rather than linear. A country can be visibly overspending on
+    // defence without that fact getting monotonically worse for ever, and an
+    // unbounded penalty here simply drowns out every other input to standing.
+    const strain = Math.min(6, isr.gnpPercent - GNP_TOLERANCE);
+    isr.popularity = clamp(isr.popularity - strain * 0.2, 0, 100);
+    coalitionReact(s, 'welfare', -strain * 0.25);
+  }
+
+  // Conscript classes come of age and the wounded return to their units. The
+  // pool refills slowly and only in peace, so a decade of war is a decade of
+  // getting smaller.
+  if (warCount === 0) {
+    isr.reserves = Math.min(RESERVE_CEILING, isr.reserves + 3);
   }
 
   // Domestic standing.
@@ -584,6 +616,8 @@ export interface BudgetOffer {
   aidRefused: boolean;
   canGrowArmy: boolean;
   armyCapped: boolean;
+  /** The reserve pool is too thin to stand up two more brigades. */
+  noManpower: boolean;
 }
 
 export function budgetOffer(s: GameState): BudgetOffer {
@@ -592,11 +626,15 @@ export function budgetOffer(s: GameState): BudgetOffer {
     s.stats.warsStarted * 8 + s.stats.strikesOrdered * 3 + s.stats.nukesUsed * 40;
   const base = (s.israel.usRelations / 100) * 1800;
   const aid = Math.max(0, Math.round(base - aggression * 6));
+  const capped = s.firedEvents.includes(`armscap-${s.year}`);
+  const manpower = s.israel.reserves >= BRIGADE_MANPOWER;
   return {
     aid,
     aidRefused: aid <= 0 || s.israel.suppliers.usa.embargoed,
-    canGrowArmy: !s.firedEvents.includes(`armscap-${s.year}`),
-    armyCapped: s.firedEvents.includes(`armscap-${s.year}`),
+    canGrowArmy: !capped && manpower,
+    armyCapped: capped,
+    /** Distinct from the arms cap: nobody forbade it, there is simply nobody left. */
+    noManpower: !manpower,
   };
 }
 
@@ -619,8 +657,9 @@ export function applyBudget(
     s.israel.defenceBudget = Math.round(s.israel.defenceBudget * 1.2);
     s.israel.gnpPercent = Math.round((s.israel.gnpPercent + 1.4) * 10) / 10;
     // Guns crowd out butter, and Shas is in this government for the butter.
+    // The higher the share already is, the louder they are about it.
     s.israel.popularity = clamp(s.israel.popularity - 4, 0, 100);
-    coalitionReact(s, 'welfare', -14);
+    coalitionReact(s, 'welfare', -14 - Math.max(0, s.israel.gnpPercent - GNP_TOLERANCE) * 2);
     notes.push('Defence spending increased. The economy will feel it.');
   } else if (spending === 'decrease') {
     s.israel.defenceBudget = Math.round(s.israel.defenceBudget * 0.85);
@@ -630,12 +669,24 @@ export function applyBudget(
     notes.push('Defence spending reduced.');
   }
 
-  if (growArmy && offer.canGrowArmy) {
-    s.israel.brigades += 2;
-    s.israel.reserves += 40;
-    s.israel.usRelations = clamp(s.israel.usRelations - 6, 0, 100);
-    s.tension = clamp(s.tension + 4, 0, 100);
-    notes.push('Two further brigades — 40,000 combat soldiers — have been raised.');
+  // An order that cannot be carried out is answered, not silently dropped.
+  if (growArmy) {
+    if (offer.armyCapped) {
+      notes.push('The undertaking given at the summit forbids expanding the army this year.');
+    } else if (offer.noManpower) {
+      // The men have to come from somewhere, and there is nowhere left.
+      notes.push(
+        'The General Staff cannot raise further brigades: the reserve pool is exhausted.',
+      );
+    } else {
+      s.israel.brigades += 2;
+      // Standing formations are made out of reservists, not conjured beside
+      // them. This used to *add* to the pool, which had the arrow backwards.
+      s.israel.reserves -= BRIGADE_MANPOWER;
+      s.israel.usRelations = clamp(s.israel.usRelations - 6, 0, 100);
+      s.tension = clamp(s.tension + 4, 0, 100);
+      notes.push('Two further brigades — 40,000 combat soldiers — have been raised.');
+    }
   }
 
   for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} — ${n}`);

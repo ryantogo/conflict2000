@@ -161,9 +161,9 @@ Where it landed. Passive players run 120 games each, the strategist 80:
 
 | player | victory | survived decade | invaded | removed or killed |
 | --- | --- | --- | --- | --- |
-| passive, signs everything | 0% | 52% | 46% | 2% |
+| passive, signs everything | 0% | 48% | 36% | 15% |
 | passive, refuses everything | 0% | 0% | 0% | 100% |
-| disciplined strategist | 26% | 9% | 24% | 41% |
+| disciplined strategist | 30% | 5% | 11% | 54% |
 
 Signing at Camp David and then doing nothing survives the decade more often
 than not, and never wins. Refusing and then doing nothing loses every single
@@ -244,7 +244,68 @@ domestic lines an argument rather than a flourish.
 
 ---
 
-## 5. The map
+## 5. The home front
+
+`Israel.popularity` was doing two jobs badly. What the country thinks of you and
+whether you can still pass a budget are different questions, and conflating them
+meant a premier could concede a Palestinian homeland, lose fourteen points of
+polling, and govern on undisturbed.
+
+The Knesset is now the real 1999 arithmetic — seventy-five of a hundred and
+twenty, with sixty-one needed. Partners are not scored on popularity. They are
+scored on three things they actually care about, and the same act moves
+different ones in opposite directions:
+
+| | territorial | hawkish | welfare |
+| --- | --- | --- | --- |
+| Meretz | wants concessions | dislikes force | some |
+| National Religious Party | calls them betrayal | approves | none |
+| Shas | **the pivot** | mild | its school network above all |
+
+There is no position that satisfies a government assembled out of Meretz and the
+NRP, which is the point and was Barak's actual problem. Losing your majority is
+not death: he governed as a minority from July 2000 until he went to the country
+in December, and so can you. The ordinary cost is popularity month on month, and
+the House only tables a confidence motion once the arithmetic is hopeless.
+
+**There is no good answer to Camp David, and it is not the answer you would
+expect.** Conceding costs Shas, the NRP and Yisrael BaAliyah and hands you a
+minority to govern with. Refusing keeps them, loses Meretz, and sets the
+territories alight in September. Over eighty games of the same campaign
+differing only on that question:
+
+| | victory | government lost |
+| --- | --- | --- |
+| concedes the homeland | 24 | 35 |
+| refuses it | 0 | 66 |
+
+This was written expecting the opposite, on the reasoning that a premier who
+spends the decade invading his neighbours should keep the right on side. The
+harness said otherwise: the Palestinian track punishes refusal considerably
+harder than the coalition punishes concession. The test now records what is
+true rather than what was assumed.
+
+Manpower and money stopped being decorative in the same pass. `reserves` was
+decremented in combat and gated nothing; it now gates emergency mobilisation,
+is *spent* raising brigades rather than created by it — the arrow was
+backwards — and refills only in peace, so a decade of war is a decade of
+getting smaller. Casualties cost the coalition its patience whether or not the
+campaign is going well, because war weariness is about the funerals and not the
+map.
+
+`gnpPercent` was written at every budget and read only by two screens. Past
+about 10.5% the parties that are in government for the welfare budget start
+counting. The penalty saturates rather than growing without limit, and the
+distinction matters: the first attempt was linear, and it quietly drowned out
+every other input to standing. The reference strategist used to raise the
+defence share every December for a decade, reaching a fifth of national product
+and losing the House over it. Teaching it to stop at 11% took its victories from
+16 to 24 out of 80 — which is the clearest evidence available that the
+constraint is a decision rather than a tax.
+
+---
+
+## 6. The map
 
 The original shipped six EGA maps as run-length scanline data. Decoding them
 took three goes: the records are five bytes (colour, x16, y16), each starting a
@@ -295,7 +356,7 @@ Live state is drawn rather than described: brigade counts thicken the frontier
 they hold, wars dash it red, the territories hatch in proportion to unrest, and
 collapsed governments go grey and struck through.
 
-## 6. Deliberate omissions
+## 7. Deliberate omissions
 
 - **The original pixel art is not used.** The decoders work and the assets are
   fully recoverable (`tools/decode_assets.py`). The map borrows the original's

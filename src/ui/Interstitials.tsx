@@ -204,6 +204,10 @@ export function Budget({
           <p className="small red">
             Israel gave an undertaking at the summit not to expand the army this year.
           </p>
+        ) : offer.noManpower ? (
+          <p className="small red">
+            There is no manpower left to raise them with. The reserve pool is exhausted.
+          </p>
         ) : (
           <div className="choices">
             <button
