@@ -6,6 +6,7 @@ export {
   byOrigin,
   fleetReadiness,
   grade,
+  longRangeCount,
   cloneFleet,
   countOf,
   emptyFleet,
@@ -28,12 +29,16 @@ export {
   extremeOpQueued,
 } from './intelligence';
 export {
+  REACH,
   strategicOptions,
+  remoteStrikeOptions,
   frontReport,
   israeliStrength,
   enemyStrength,
 } from './military';
 export { assess, confidenceLabel, coverage } from './assessment';
+export { findWar, groundHeld, occupations } from './wars';
+export type { Occupation } from './wars';
 export { previewTurn } from './preview';
 export type { QueuedEffect } from './preview';
 export { factionOptions, factionsIn } from './factions';
@@ -48,6 +53,7 @@ export {
   powerOptions,
   powerReport,
   relationsWith,
+  warOnTerror,
 } from './powers';
 export type { Demand, PowerDirective, PowerId, PowerStatus } from './powers';
 export {
@@ -66,11 +72,19 @@ export type { LineStatus } from './industry';
 export {
   greet,
   availableFrom,
+  forthcomingFrom,
+  leadTimeFor,
   placeOrder,
   procurementAdvice,
   inTransit,
 } from './arms';
-export { policingOptions } from './palestine';
+export {
+  FINAL_STATUS_LABEL,
+  intifadaChance,
+  palestinianAcceptance,
+  policingOptions,
+  summitKindOf,
+} from './palestine';
 export { postureReport, mostDangerousThreat, POSTURE_LABEL } from './nuclear';
 export {
   startGame,

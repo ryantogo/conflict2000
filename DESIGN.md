@@ -111,9 +111,9 @@ Tested`. Each rung buys deterrence — visibly, in the AI's willingness to attac
 
 **The Palestinian question.** In the original this was a pressure valve: post a
 brigade, lose it from your borders. Here it carries the weight the date
-demands. Refusing the Camp David framework sets the territories alight in
-September, deterministically. Signing takes the question off the table for the
-rest of the game, at the price of your coalition.
+demands. Refusing the Camp David framework very nearly always sets the
+territories alight. Signing takes the question off the table — if Arafat signs
+too, which at Camp David he does a little under half the time. See §13.
 
 **Mossad has a budget and a capacity.** See below — this was the hardest thing
 to get right.
@@ -517,7 +517,138 @@ Live state is drawn rather than described: brigade counts thicken the frontier
 they hold, wars dash it red, the territories hatch in proportion to unrest, and
 collapsed governments go grey and struck through.
 
-## 10. Deliberate omissions
+## 10. The wider market
+
+Washington would not sell the IAF more of the aircraft it already flew. The
+catalogue offered the F-16I and the F-15I and not one more F-16C, and the
+Apache on sale was the Longbow the IAF had not yet bought rather than the
+Peten it had. The Baz, the Barak, the Netz and the Peten are now on the
+American page, and they reuse their in-service ids, so a delivery lands in the
+same inventory line as the squadrons already flying them. The registry merge
+had to learn this: the in-service entry names the aircraft on the review
+screens, and the catalogue entry keeps its reach.
+
+London, Paris and the dealer each carry twice what they did. Three counters are
+new, and none of them is simply a shop:
+
+| | refuses while | Washington's disapproval per order |
+| --- | --- | --- |
+| the dealer | never | small |
+| Moscow | we are at war with, or have lately bombed, Damascus or Tehran | more |
+| Beijing | we have used the bomb, or lately bombed Tehran | most — the Phalcon affair was July 2000 |
+| Ankara | we have used the bomb, or police an intifada hard | none |
+
+They have no relationship ladder and no demands, because they are not
+capitals with a view of Israel; they are sellers with clients and electorates,
+and their refusals lapse when the reason does. Turkish kit is licence-built
+American kit, so it carries an American badge and an American embargo grounds
+it. New Russian and Chinese production needs its makers' spares; Cold War
+Soviet stock does not, because nobody alive can refuse them.
+
+Things that did not exist yet are on the page greyed, with a year — the Rafale
+from 2002, the Tigre from 2003 — because a defence minister plans around the
+next aircraft before anyone can deliver one.
+
+## 11. The long reach
+
+Iraq, Iran and Libya had armies, nuclear programmes and no border, and so
+nothing on any menu but diplomacy and Mossad. Osirak is the most famous thing
+the Israeli Air Force ever did, and the game could not do it.
+
+A raid now needs aircraft that can make the trip — eight for Baghdad, twelve
+for Tripoli, sixteen for Tehran, counted from the types that carry the range —
+rather than an air force of a certain size. Every route crosses somebody's
+airspace, and they are asked about it afterwards. Each capital answers in its
+own way and none of them from where it was hit: Baghdad with Scuds on Tel Aviv,
+Tripoli with a bomb somewhere else, and Tehran from southern Lebanon. Osirak
+was one building; Tehran learned from it, and a strike on its programme sets
+it back by less.
+
+`lastStruck` records who we bombed and when. Moscow and Beijing read it.
+
+## 12. Ground
+
+A war between two other states used to be a coin toss each month about who
+had lost it. There was no ground, so there was nothing to draw: Baghdad and
+Tehran were either fighting or not. A war now has a front line, the same
+centre-anchored figure the Israeli fronts have always had, and the map shades
+the land that has changed hands.
+
+"A quarter of Iraq" is measured as depth, not area: the band is the frontier
+moved inward by a quarter of the distance to the far side of the country, and
+clipped to its outline. That is how a front line moves and how a newspaper
+draws one, and it keeps the shading on the border it was taken across. Two
+states with no common frontier — Iran and Syria — have nothing to draw and are
+described in words instead.
+
+Our gains are kept under a ceasefire, as the ceasefire text has always said,
+and go home with the column; theirs are handed back. Tidying the wars of a
+fallen government moved into `collapseGovernment` along the way — the victor's
+list used to be cleaned by whichever caller remembered to.
+
+Rewriting the inter-state wars moved the passive signer from 51 to 53
+survivals of 120, and invasions from 51 to 44.
+
+## 13. Two signatures
+
+Signing at Camp David used to end the Palestinian question. It is now an
+offer, and the other side has to sign as well. Arafat's willingness starts
+a little under even at Camp David, falls with unrest and with a strong Hamas,
+and rises when Cairo and Amman stand behind the deal.
+
+When we sign and he does not, Washington, London and Paris all give us credit
+for going further than anybody had; the country rallies to the premier who
+offered everything ("there is no partner" is a popular thing to be able to
+say); and the right still punishes the offer, if less than a deal it would
+have had to live with.
+
+The intifada is no longer a scripted event on 28 September. It is a monthly
+hazard from September 2000, set by how the talks ended — high after our
+refusal, somewhat lower after his, small after an agreement but never zero,
+since somebody always rejects the deal — and scaled by the street and by
+Hamas. It can burn out after four quiet months. And if the territories are
+burning with nothing signed, Taba follows: once, three months on, with better
+terms, more unrest-tolerant odds of a Palestinian signature, and a heavier
+price for a minority government that signs under fire.
+
+**This is the one change in this pass that was allowed through the harness
+floor.** A do-nothing premier has never been able to outlast an intifada — the
+refuse-everything bot survives none of its 120 games — so every Arafat refusal
+routes a passive signer onto a track that was always fatal to passivity. The
+first version charged the offer at full price and then the intifada on top,
+and a passive signer who was refused survived two games in fifty-eight.
+Shared blame and the "no partner" rally took most of the cruelty out of it
+without changing the odds, and what is left was a decision: keep Arafat's
+refusal at the rate history suggests, and let the game be harder.
+
+| passive, signs everything | survived | invaded | removed | assassinated |
+| --- | --- | --- | --- | --- |
+| before this pass | 51 | 51 | 16 | 2 |
+| after | 35 | 33 | 43 | 9 |
+
+The strategist feels it more than anybody, because it concedes at Camp David
+by design: victories fell from 15 of 80 to 5, and the median game from
+thirty-six months to thirteen. Refusing is still worse — no victories at all —
+so there is still no good answer to Camp David; there is now a less good one.
+
+Over forty seeds: refusal led to an intifada 38 times; Arafat refused 15 of 40
+signings; and of the 25 genuine agreements, 5 saw a rejectionist uprising.
+
+## 14. September 2001
+
+It usually happens. About one time in seven the cell is broken up first, and
+the world goes on as it was.
+
+When it happens, Washington's threat perception changes overnight and so does
+what it will pay for, sell, and look away from: December aid is a quarter
+larger and there is a one-off emergency grant; the American catalogue opens a
+rung earlier and delivers a month sooner; and strikes on the armed groups and
+on the State Department's list cost half as much in Washington, which also
+stops pressing us about strikes on anybody who is not a government. For the
+first three months, though, it is assembling a coalition that needs Arab
+capitals in the room, and an Israeli raid on a state costs twice as much.
+
+## 15. Deliberate omissions
 
 - **The original pixel art is not used.** The decoders work and the assets are
   fully recoverable (`tools/decode_assets.py`). The map borrows the original's
@@ -532,7 +663,8 @@ collapsed governments go grey and struck through.
   reason to break it. A civil war is currently something you read about and
   fund rather than something you watch move.
 - **The reference bots do not use half of what has been built.** They never
-  run agents, open a production line, lobby a capital or back a successor, so
+  run agents, open a production line, lobby a capital, back a successor, fly
+  a long-range raid or shop anywhere but Washington, so
   every balance figure in this document is what happens to a player who
   ignores five phases of mechanics. The real ceiling is higher and nobody has
   measured it.

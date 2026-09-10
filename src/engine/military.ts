@@ -7,8 +7,16 @@
  * player only as a bar and a sentence from the front-line commander.
  */
 
-import type { Front, FrontId, GameState, NationId, StrategicDirective } from './types';
-import { FRONTS } from './types';
+import type {
+  Front,
+  FrontId,
+  GameState,
+  NationId,
+  RemoteDirective,
+  RemoteId,
+  StrategicDirective,
+} from './types';
+import { FRONTS, REMOTE_IDS } from './types';
 import {
   airCount,
   attrite,
@@ -16,12 +24,14 @@ import {
   drawAll,
   drawFraction,
   drawFrom,
+  drawLongRange,
   enemyEquipmentWeight,
   israeliEquipmentWeight,
+  longRangeCount,
   mergeInto,
   totalUnits,
 } from './fleet';
-import { clamp } from './ladders';
+import { clamp, relationsLabel } from './ladders';
 import { canInvade } from './diplomacy';
 import { collapseGovernment } from './intelligence';
 import { coalitionMood, coalitionReact } from './coalition';
@@ -37,7 +47,7 @@ import {
   WAR_LOSSES,
   expand,
 } from '../data/headlines';
-import { adjustRelations } from './powers';
+import { TERROR_LIST, adjustRelations, coalitionBuilding, warOnTerror } from './powers';
 
 export interface StrategicOption {
   id: StrategicDirective;
@@ -331,6 +341,8 @@ export function resolveStrategic(s: GameState, rng: Rng): MilitaryEvent[] {
         const wasHolding = forcesOnFront(front);
         returnToStockpile(s, id, true);
         front.territoryHeld = false;
+        // Bringing the column home hands the ground back with it.
+        front.occupation = 0;
         // A gesture only reads as one if there is a government left to read it.
         if (!n.collapsed) {
           n.relationsPoints = clamp(n.relationsPoints + 8, -100, 100);
@@ -421,6 +433,7 @@ function resolveStrike(
 
   s.stats.strikesOrdered++;
   s.stats.actsOfViolence++;
+  s.lastStruck[id] = s.turn;
 
   // Enemy air defence gets a say.
   const defence =
@@ -443,13 +456,13 @@ function resolveStrike(
     case 'strike_military':
       drawFrom(n.forces.equipment, rng.int(60, 200), 'tank');
       drawFrom(n.forces.equipment, rng.int(5, 25), 'aircraft');
-      adjustRelations(s, 'usa', -5);
+      adjustRelations(s, 'usa', -usCostOfStrike(s, id, 5));
       out.push({ text: expand(rng.pick(STRIKE_MILITARY), ctx), category: 'war', weight: 2 });
       break;
 
     case 'strike_industrial':
       n.stability = clamp(n.stability - rng.int(3, 8), 0, 100);
-      adjustRelations(s, 'usa', -8);
+      adjustRelations(s, 'usa', -usCostOfStrike(s, id, 8));
       out.push({ text: expand(rng.pick(STRIKE_INDUSTRIAL), ctx), category: 'war', weight: 2 });
       break;
 
@@ -457,7 +470,7 @@ function resolveStrike(
       // Effective and indefensible.
       n.stability = clamp(n.stability - rng.int(6, 14), 0, 100);
       s.stats.actsOfViolence += 2;
-      adjustRelations(s, 'usa', -18);
+      adjustRelations(s, 'usa', -usCostOfStrike(s, id, 18));
       s.israel.prestige = clamp(s.israel.prestige - 6, 0, 100);
       s.tension = clamp(s.tension + 6, 0, 100);
       out.push({ text: expand(rng.pick(STRIKE_CIVILIAN), ctx), category: 'war', weight: 3 });
@@ -465,7 +478,7 @@ function resolveStrike(
 
     case 'strike_nuclear':
       n.nuclearProgress = Math.max(0, n.nuclearProgress - rng.int(40, 70));
-      adjustRelations(s, 'usa', -10);
+      adjustRelations(s, 'usa', -usCostOfStrike(s, id, 10));
       out.push({
         text: expand('*s destroy @ nuclear reactor in strike', ctx),
         category: 'war',
@@ -496,6 +509,7 @@ function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEven
   const ctx = ctxFor(s, id, true);
   s.israel.warheads = Math.max(0, s.israel.warheads - 1);
   s.stats.nukesUsed++;
+  s.lastStruck[id] = s.turn;
   s.stats.actsOfViolence += 10;
   s.tension = clamp(s.tension + 45, 0, 100);
   adjustRelations(s, 'usa', -45);
@@ -514,6 +528,227 @@ function resolveNuclearStrike(s: GameState, id: FrontId, rng: Rng): MilitaryEven
       weight: 3,
     },
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Beyond the borders
+// ---------------------------------------------------------------------------
+
+/**
+ * What it takes to reach each of the far capitals. `need` is the number of
+ * long-range airframes a raid ties up; `distance` is what the length of the
+ * trip adds to the odds of it going wrong; and every route crosses somebody
+ * else's airspace, which they notice.
+ */
+export const REACH: Record<
+  RemoteId,
+  { need: number; distance: number; overflight: NationId; overflightCost: number; answer: string }
+> = {
+  iraq: {
+    need: 8,
+    distance: 0.04,
+    overflight: 'jordan',
+    overflightCost: 6,
+    answer: 'Baghdad answered the last war with Scuds on Tel Aviv.',
+  },
+  libya: {
+    need: 12,
+    distance: 0.08,
+    overflight: 'egypt',
+    overflightCost: 5,
+    answer: 'Tripoli’s answer is usually a bomb somewhere else, months later.',
+  },
+  iran: {
+    need: 16,
+    distance: 0.12,
+    overflight: 'jordan',
+    overflightCost: 4,
+    answer: 'Tehran does not answer from Tehran. It answers from southern Lebanon.',
+  },
+};
+
+const REMOTE_LABELS: Record<Exclude<RemoteDirective, 'none'>, string> = {
+  strike_military: 'Long-range strike on air bases and missile sites',
+  strike_industrial: 'Long-range strike on industry and oil',
+  strike_nuclear: 'Destroy the nuclear programme from the air',
+};
+
+export interface RemoteOption {
+  id: RemoteDirective;
+  label: string;
+  disabledReason?: string;
+}
+
+/**
+ * The long-range menu. Unlike the borders there is nothing to deploy and no
+ * army to mass — only a question of whether we have the aircraft to get
+ * there, and whether the cabinet will sign for it.
+ */
+export function remoteStrikeOptions(s: GameState, id: RemoteId): RemoteOption[] {
+  const n = s.nations[id];
+  if (n.collapsed) {
+    return [{ id: 'none', label: 'Take no action', disabledReason: `${n.name} has no government.` }];
+  }
+
+  const reach = longRangeCount(s.israel.stockpile.equipment);
+  const block =
+    s.israel.restraint > 0
+      ? UNDERTAKING_GIVEN
+      : n.relations > 3
+        ? `The cabinet will not authorise bombing ${n.name} while relations are ` +
+          `${relationsLabel(n.relations).toLowerCase()}.`
+        : reach < REACH[id].need
+          ? `We have too few long-range strike aircraft to reach ${n.capital} and bring them home.`
+          : undefined;
+
+  const opts: RemoteOption[] = (['strike_military', 'strike_industrial'] as const).map((k) => ({
+    id: k,
+    label: REMOTE_LABELS[k],
+    ...(block ? { disabledReason: block } : {}),
+  }));
+  opts.push({
+    id: 'strike_nuclear',
+    label: REMOTE_LABELS.strike_nuclear,
+    ...(block
+      ? { disabledReason: block }
+      : n.nuclearProgress <= 10
+        ? { disabledReason: `We know of no installation in ${n.name} worth the risk.` }
+        : {}),
+  });
+  opts.push({ id: 'none', label: 'Take no action' });
+  return opts;
+}
+
+/**
+ * What a strike on a state costs in Washington. One place, because the
+ * answer is about to depend on more than the target.
+ */
+function usCostOfStrike(s: GameState, target: NationId, base: number): number {
+  // While Washington is assembling its coalition it needs Arab governments
+  // in the room, and an Israeli raid on one of them empties it.
+  if (coalitionBuilding(s)) return base * 2;
+  // After that, a strike on a state sponsor of terror is a strike in
+  // Washington's own war, and is condemned accordingly — quietly.
+  if (warOnTerror(s) && TERROR_LIST.includes(target)) return base * 0.5;
+  return base;
+}
+
+/** The raids on Baghdad, Tehran and Tripoli. */
+export function resolveRemote(s: GameState, rng: Rng): MilitaryEvent[] {
+  const events: MilitaryEvent[] = [];
+
+  for (const id of REMOTE_IDS) {
+    const kind = s.directives.remote[id];
+    if (!kind || kind === 'none') continue;
+    // The menu is the rulebook: an order that is no longer legal this month
+    // (a promise given since, a squadron lost) is not flown.
+    const legal = remoteStrikeOptions(s, id).find((o) => o.id === kind);
+    if (!legal || legal.disabledReason) continue;
+
+    const n = s.nations[id];
+    const reach = REACH[id];
+    const ctx = ctxFor(s, id, true);
+
+    s.stats.strikesOrdered++;
+    s.stats.actsOfViolence++;
+    s.lastStruck[id] = s.turn;
+    coalitionReact(s, 'hawkish', 4);
+
+    // The route crosses somebody's airspace, and they are asked afterwards.
+    const over = s.nations[reach.overflight];
+    if (!over.collapsed) {
+      over.relationsPoints = clamp(over.relationsPoints - reach.overflightCost, -100, 100);
+    }
+
+    const defence =
+      countOf(n.forces.equipment, 'sam') * 0.004 +
+      countOf(n.forces.equipment, 'aircraft') * 0.0004 +
+      reach.distance;
+    const success = rng.next() > clamp(defence, 0.08, 0.7);
+
+    drawLongRange(s.israel.stockpile.equipment, rng.int(0, 2));
+    s.tension = clamp(s.tension + (id === 'iran' ? 10 : 8), 0, 100);
+    n.relationsPoints = clamp(n.relationsPoints - 35, -100, 100);
+
+    if (!success) {
+      drawLongRange(s.israel.stockpile.equipment, rng.int(1, 4));
+      s.israel.prestige = clamp(s.israel.prestige - 4, 0, 100);
+      adjustRelations(s, 'usa', -usCostOfStrike(s, id, 4));
+      events.push({ text: expand(rng.pick(STRIKE_FAILED), ctx), category: 'war', weight: 3 });
+    } else {
+      switch (kind) {
+        case 'strike_military':
+          drawFrom(n.forces.equipment, rng.int(5, 20), 'aircraft');
+          drawFrom(n.forces.equipment, rng.int(2, 6), 'sam');
+          drawFrom(n.forces.equipment, rng.int(40, 120), 'tank');
+          adjustRelations(s, 'usa', -usCostOfStrike(s, id, 6));
+          events.push({ text: expand(rng.pick(STRIKE_MILITARY), ctx), category: 'war', weight: 2 });
+          break;
+
+        case 'strike_industrial':
+          n.stability = clamp(n.stability - rng.int(3, 8), 0, 100);
+          adjustRelations(s, 'usa', -usCostOfStrike(s, id, 8));
+          events.push({ text: expand(rng.pick(STRIKE_INDUSTRIAL), ctx), category: 'war', weight: 2 });
+          break;
+
+        case 'strike_nuclear': {
+          // Osirak was one building. Tehran learned from Osirak, and spread
+          // its programme across the country and under it.
+          const setback = id === 'iran' ? rng.int(20, 45) : rng.int(35, 65);
+          const wasAdvanced = n.nuclearProgress > 50;
+          n.nuclearProgress = Math.max(0, n.nuclearProgress - setback);
+          s.israel.prestige = clamp(s.israel.prestige + 3, 0, 100);
+          // Washington condemns in public. How loudly depends on how glad it
+          // privately is that somebody did it.
+          adjustRelations(s, 'usa', -usCostOfStrike(s, id, wasAdvanced ? 4 : 10));
+          events.push({
+            text:
+              id === 'iraq'
+                ? 'Osirak again: Israeli jets hit Iraqi nuclear sites'
+                : `Israeli jets strike ${n.adjective} nuclear installations`,
+            category: 'war',
+            weight: 3,
+          });
+          break;
+        }
+      }
+    }
+
+    events.push(...retaliate(s, id, success, rng));
+  }
+
+  return events;
+}
+
+/** Each of the far capitals answers in its own way, and none from where it was hit. */
+function retaliate(s: GameState, id: RemoteId, success: boolean, rng: Rng): MilitaryEvent[] {
+  const n = s.nations[id];
+  switch (id) {
+    case 'iraq':
+      if (!rng.chance(success ? 0.35 : 0.2)) return [];
+      s.israel.popularity = clamp(s.israel.popularity - 3, 0, 100);
+      s.tension = clamp(s.tension + 6, 0, 100);
+      // The country wants an answer. Washington wants us not to give one.
+      coalitionReact(s, 'hawkish', 4);
+      return [
+        { text: 'Iraqi Scuds fall on Tel Aviv; Washington urges restraint', category: 'war', weight: 3 },
+      ];
+
+    case 'iran': {
+      n.relationsPoints = -100;
+      const hezbollah = s.factions.hezbollah;
+      if (hezbollah?.active) hezbollah.strength = clamp(hezbollah.strength + 8, 0, 100);
+      return [{ text: 'Tehran vows revenge as Hezbollah goes on alert', category: 'war', weight: 2 }];
+    }
+
+    case 'libya':
+      if (!rng.chance(0.25)) return [];
+      s.israel.popularity = clamp(s.israel.popularity - 2, 0, 100);
+      s.tension = clamp(s.tension + 3, 0, 100);
+      return [
+        { text: 'Bomb at Israeli embassy blamed on Libyan agents', category: 'war', weight: 2 },
+      ];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -584,6 +819,10 @@ export function resolveCombat(s: GameState, rng: Rng): MilitaryEvent[] {
     // Centre on 0.5 so an even match drifts nowhere, then add friction.
     const swing = (ratio - 0.5) * 60 + rng.int(-8, 8);
     front.warProgress = clamp(front.warProgress + swing, -100, 100);
+    // The bar is also a front line: how far one army has pushed into the
+    // other's country, which is what the map shades.
+    front.occupation = Math.max(0, front.warProgress) / 100;
+    front.lostGround = Math.max(0, -front.warProgress) / 100;
 
     // Attrition on both sides, scaled by how badly it is going.
     const ourLossRate = clamp(0.1 - front.warProgress / 900, 0.02, 0.22);

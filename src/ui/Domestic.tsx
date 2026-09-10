@@ -3,6 +3,7 @@ import {
   MAJORITY,
   standingLabel,
   POSTURE_LABEL,
+  FINAL_STATUS_LABEL,
   coalitionReport,
   coalitionSeats,
   mostDangerousThreat,
@@ -149,6 +150,11 @@ export function Domestic({
             <Row label="Israeli presence" value={p.presence === 'full' ? 'Full policing.' : 'Low profile.'} />
             <Row label="Tactics" value={p.tactics === 'hard' ? 'HARD.' : 'SOFT.'} />
             <Row label="Brigades committed" value={p.brigadesPosted} />
+            <Row
+              label="Final status"
+              value={FINAL_STATUS_LABEL[p.finalStatus]}
+              tone={p.finalStatus === 'agreed' ? 'teal' : p.finalStatus === 'none' ? '' : 'amber'}
+            />
             {p.intifada && <Row label="Status" value="INTIFADA" tone="red" />}
             {p.homelandCreated && <Row label="Status" value="Homeland agreed" tone="teal" />}
           </div>

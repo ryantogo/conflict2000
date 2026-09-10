@@ -4,7 +4,9 @@ import {
   SUPPLIER_IDS,
   loyaltyLabel,
   availableFrom,
+  forthcomingFrom,
   greet,
+  leadTimeFor,
   industryReport,
   industrySpend,
   inTransit,
@@ -30,6 +32,7 @@ export function Procurement({
   const lines = industryReport(s);
   const committed = industrySpend(s);
   const items = availableFrom(s, supplier);
+  const forthcoming = forthcomingFrom(s, supplier);
   const transit = inTransit(s);
 
   return (
@@ -129,6 +132,9 @@ export function Procurement({
         <p className="dim" style={{ marginTop: -6 }}>
           {greeting.line}
         </p>
+        <p className="small faint" style={{ marginTop: -4 }}>
+          {SUPPLIERS[supplier].note}
+        </p>
 
         {!greeting.canTrade || items.length === 0 ? (
           <p className="small faint">No offers made. End meeting.</p>
@@ -145,7 +151,7 @@ export function Procurement({
                       {item.description}
                     </span>
                     <span className="mono small faint">
-                      ${item.cost} M each · delivery {item.leadTime} mo
+                      ${item.cost} M each · delivery {leadTimeFor(s, item)} mo
                     </span>
                   </span>
                   <span
@@ -182,6 +188,27 @@ export function Procurement({
               );
             })}
           </div>
+        )}
+
+        {greeting.canTrade && forthcoming.length > 0 && (
+          <>
+            <div className="kicker" style={{ marginTop: 14 }}>
+              Not yet in production
+            </div>
+            <div className="rows">
+              {forthcoming.map((item) => (
+                <div key={item.id} className="row" style={{ opacity: 0.55 }}>
+                  <span className="label" style={{ flex: 1 }}>
+                    <strong style={{ color: 'var(--text)' }}>{item.name}</strong>
+                    <span className="why" style={{ fontStyle: 'normal', display: 'block' }}>
+                      {item.description}
+                    </span>
+                  </span>
+                  <span className="value faint">From {item.fromYear}</span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {error && (

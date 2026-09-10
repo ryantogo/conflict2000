@@ -38,9 +38,28 @@ export const AIR_CATEGORIES: ArmsCategory[] = ['aircraft', 'helicopter', 'survei
  * take tanks away; it grounds them a few at a time, month after month, and
  * whose badge is on the engine decides which ones.
  */
-export type Origin = 'usa' | 'britain' | 'france' | 'israel' | 'soviet' | 'other';
+export type Origin =
+  | 'usa'
+  | 'britain'
+  | 'france'
+  | 'israel'
+  /** Cold War stock: nobody alive can stop the spares for it. */
+  | 'soviet'
+  /** New Russian production: Moscow can. */
+  | 'russia'
+  | 'china'
+  | 'other';
 
-export const ORIGINS: Origin[] = ['usa', 'britain', 'france', 'israel', 'soviet', 'other'];
+export const ORIGINS: Origin[] = [
+  'usa',
+  'britain',
+  'france',
+  'israel',
+  'soviet',
+  'russia',
+  'china',
+  'other',
+];
 
 export interface Equipment {
   id: string;
@@ -49,6 +68,8 @@ export interface Equipment {
   /** Combat weight per unit, relative to `COMBAT_REFERENCE` for its category. */
   power: number;
   origin: Origin;
+  /** Can reach Baghdad, Tehran or Tripoli and come back. */
+  longRange?: boolean;
 }
 
 /** Registry entries may omit an origin the source can derive. */
@@ -91,6 +112,10 @@ const SUPPLIER_ORIGIN: Record<string, Origin> = {
   britain: 'britain',
   france: 'france',
   dealer: 'soviet',
+  russia: 'russia',
+  china: 'china',
+  // Ankara sells licence-built American kit; each item says so itself.
+  turkey: 'other',
 };
 
 for (const item of CATALOGUE) {
@@ -99,18 +124,25 @@ for (const item of CATALOGUE) {
     name: item.name,
     category: item.category,
     power: item.power,
-    // What you buy from a supplier is by definition made by them.
-    origin: SUPPLIER_ORIGIN[item.supplier] ?? 'other',
+    // What you buy from a supplier is made by them, unless the engine says
+    // otherwise — and whoever made the engine controls the spares.
+    origin: item.origin ?? SUPPLIER_ORIGIN[item.supplier] ?? 'other',
+    ...(item.longRange ? { longRange: true } : {}),
   };
 }
 
+// Types already in somebody's order of battle. Several are also on sale now —
+// more F-16s for an air force that flies F-16s — so the in-service entry is
+// the name the review screens print, and the catalogue keeps its reach.
 for (const item of [...IN_SERVICE, ...DOMESTIC_EQUIPMENT]) {
+  const sold = REGISTRY[item.id];
   REGISTRY[item.id] = {
     id: item.id,
     name: item.name,
     category: item.category,
     power: item.power,
     origin: item.origin ?? 'other',
+    ...(item.longRange || sold?.longRange ? { longRange: true } : {}),
   };
 }
 

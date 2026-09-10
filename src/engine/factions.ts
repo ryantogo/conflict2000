@@ -14,7 +14,7 @@ import { NATION_IDS } from './types';
 import { clamp, pointsToRelations } from './ladders';
 import type { Rng } from './rng';
 import { coalitionMood } from './coalition';
-import { adjustRelations } from './powers';
+import { adjustRelations, warOnTerror } from './powers';
 import {
   FACTIONS,
   PATRON_SUPPORT,
@@ -176,7 +176,8 @@ export function resolveFactions(s: GameState, rng: Rng): FactionEvent[] {
       // recruits for them. Nobody has ever solved this militarily.
       st.support = clamp(st.support + rng.int(3, 8), 0, 100);
       s.tension = clamp(s.tension + 3, 0, 100);
-      adjustRelations(s, 'usa', -3);
+      // After September 2001 this is Washington's own war, and it says so.
+      adjustRelations(s, 'usa', warOnTerror(s) ? -1.5 : -3);
       if (host && !host.collapsed) {
         host.relationsPoints = clamp(host.relationsPoints - 6, -100, 100);
       }

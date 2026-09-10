@@ -64,11 +64,18 @@ describe('balance', () => {
     // point the harness was written. Five phases of deepening have taken it to
     // roughly 43% — an enemy that rearms, a coalition that walks out, an
     // embargo that grounds aircraft, an assessment that can be wrong, and now
-    // Hezbollah. Survival is still the single likeliest outcome and doing
-    // nothing is still not fatal, which is what this floor is guarding. The
-    // floor has deliberately not been moved to make room; if a later phase
-    // pushes through it, that is a finding rather than a number to adjust.
-    expect(survived / N).toBeGreaterThan(0.4);
+    // Hezbollah. The floor was not moved to make room for any of those.
+    //
+    // It was moved, deliberately, for the Palestinian track. Signing at Camp
+    // David no longer ends the question on its own: Arafat has to sign too,
+    // and at Camp David he does a little over half the time. A do-nothing
+    // premier has never been able to outlast an intifada — the refuse-
+    // everything bot survives none of its 120 games — so every refusal now
+    // routes a passive signer onto a track that was always fatal to passivity.
+    // Survival fell from roughly 43% to roughly 22%, and the decision was taken
+    // to keep the history (Arafat did walk out) rather than the old number.
+    // What the floor still guards is that signing is survivable at all.
+    expect(survived / N).toBeGreaterThan(0.2);
     // Doing nothing must not be a winning strategy either.
     expect((dist.victory ?? 0) / N).toBeLessThan(0.1);
   });
@@ -154,28 +161,47 @@ describe('balance', () => {
   });
 
   it('gives the Camp David decision real weight in both directions', () => {
-    // Accepting the homeland should reliably calm the territories.
-    const accepted = playPassive(4, true);
-    const refused = playPassive(4, false);
-    expect(accepted.palestine.unrest).toBeLessThan(refused.palestine.unrest);
+    // Accepting the homeland should, on average, calm the territories — even
+    // though Arafat does not always sign what we sign.
+    const mean = (accept: boolean) =>
+      Array.from({ length: 20 }, (_, i) => playPassive(i + 1, accept).palestine.unrest).reduce(
+        (a, b) => a + b,
+        0,
+      ) / 20;
+    expect(mean(true)).toBeLessThan(mean(false));
   });
 
-  it('sets the territories alight when Camp David collapses', () => {
+  it('sets the territories alight when Camp David collapses, and rarely when it holds', () => {
     let refusedIntifadas = 0;
-    let acceptedIntifadas = 0;
+    let agreed = 0;
+    let agreedIntifadas = 0;
+    let palestiniansRefused = 0;
 
-    for (let seed = 1; seed <= 20; seed++) {
+    for (let seed = 1; seed <= 40; seed++) {
       const refused = playPassive(seed, false);
       const accepted = playPassive(seed, true);
-      // `firedEvents` also records events whose moment passed unfired, so the
-      // only honest witness is the state the event actually sets.
-      if (refused.palestine.intifada) refusedIntifadas++;
-      if (accepted.palestine.intifada) acceptedIntifadas++;
+      // The intifada can now burn out, so the witness is that it began.
+      if (refused.firedEvents.includes('intifada-began')) refusedIntifadas++;
+      if (accepted.firedEvents.includes('camp-david-agreed')) {
+        agreed++;
+        if (accepted.firedEvents.includes('intifada-began')) agreedIntifadas++;
+      } else {
+        palestiniansRefused++;
+      }
     }
 
-    // Walking away from the framework leads to September, every time.
-    expect(refusedIntifadas).toBe(20);
-    // Signing it takes the question off the table entirely.
-    expect(acceptedIntifadas).toBe(0);
+    // eslint-disable-next-line no-console
+    console.log(
+      `intifada: refused ${refusedIntifadas}/40; agreed ${agreedIntifadas}/${agreed}; ` +
+        `Arafat refused ${palestiniansRefused}/40`,
+    );
+
+    // Walking away from the framework leads to an uprising almost every time.
+    expect(refusedIntifadas).toBeGreaterThanOrEqual(34);
+    // Arafat does not always sign, and does not always refuse.
+    expect(agreed).toBeGreaterThan(0);
+    expect(palestiniansRefused).toBeGreaterThan(0);
+    // An agreement makes it much less likely, but not impossible.
+    expect(agreedIntifadas).toBeLessThanOrEqual(Math.ceil(agreed * 0.25));
   });
 });

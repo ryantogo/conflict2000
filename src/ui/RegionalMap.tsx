@@ -3,6 +3,8 @@ import type { ViewId } from '../data/geography';
 import {
   FRONTS,
   countOf,
+  occupationLabel,
+  occupations,
   relationsLabel,
   stabilityLabel,
   stabilityRung,
@@ -13,6 +15,9 @@ import {
   BACKDROP_RINGS,
   CAPITALS,
   COUNTRY_RINGS,
+  borderBetween,
+  occupationPolygon,
+  xyPath,
   FRONT_LABELS,
   FRONT_LINES,
   GAZA_RING,
@@ -71,6 +76,25 @@ export function RegionalMap({
         <pattern id="unrest" width="5" height="5" patternTransform="rotate(-45)" patternUnits="userSpaceOnUse">
           <line x1="0" y1="0" x2="0" y2="5" stroke="var(--amber)" strokeWidth="1.4" />
         </pattern>
+        {/* Ground that has changed hands: ours, theirs in Israel, and
+            everybody else's in each other. */}
+        <pattern id="occ-israel" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="5" height="5" fill="rgba(207, 154, 47, 0.28)" />
+          <line x1="0" y1="0" x2="0" y2="5" stroke="var(--israel)" strokeWidth="2" />
+        </pattern>
+        <pattern id="occ-enemy" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="5" height="5" fill="rgba(212, 87, 79, 0.3)" />
+          <line x1="0" y1="0" x2="0" y2="5" stroke="var(--red)" strokeWidth="2" />
+        </pattern>
+        <pattern id="occ-third" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="5" height="5" fill="rgba(230, 224, 208, 0.18)" />
+          <line x1="0" y1="0" x2="0" y2="5" stroke="#e6e0d0" strokeWidth="1.6" />
+        </pattern>
+        {Object.entries(COUNTRY_RINGS).map(([id, ring]) => (
+          <clipPath key={id} id={`clip-${id}`}>
+            <path d={toPath(ring)} />
+          </clipPath>
+        ))}
       </defs>
 
       {/* sea */}
@@ -134,6 +158,27 @@ export function RegionalMap({
           <path d={toPath(GAZA_RING)} opacity={0.25 + s.palestine.unrest * 0.06} />
         </g>
       )}
+
+      {/* Occupied ground, shaded inward from the border it was taken across
+          and clipped to the country it was taken from. */}
+      <g className="map-occupation" pointerEvents="none">
+        {occupations(s).map((o) => {
+          const line = borderBetween(o.holder, o.held);
+          const ring = COUNTRY_RINGS[o.held];
+          if (!line || !ring) return null;
+          const poly = occupationPolygon(line, ring, o.share);
+          if (poly.length === 0) return null;
+          const tone = o.holder === 'israel' ? 'israel' : o.held === 'israel' ? 'enemy' : 'third';
+          return (
+            <path
+              key={`${o.holder}-${o.held}`}
+              d={xyPath(poly)}
+              clipPath={`url(#clip-${o.held})`}
+              fill={`url(#occ-${tone})`}
+            />
+          );
+        })}
+      </g>
 
       {/* Israeli forces on each border */}
       {FRONTS.map((f) => (
@@ -262,13 +307,23 @@ function fillFor(s: GameState, id: NationId | 'israel', mode: MapMode): string {
   return MILITARY_FILL[band];
 }
 
+/** "Iran holds about a quarter of it", for everything held inside this country. */
+function heldInside(s: GameState, id: NationId | 'israel'): string[] {
+  const name = (x: NationId | 'israel') => (x === 'israel' ? 'Israel' : s.nations[x].name);
+  return occupations(s)
+    .filter((o) => o.held === id)
+    .map((o) => `${name(o.holder)} holds ${occupationLabel(o.share)} of it`);
+}
+
 function labelFor(s: GameState, id: NationId | 'israel', mode: MapMode): string {
   if (id === 'israel') {
-    return `Israel — West Bank and Gaza: ${unrestLabel(s.palestine.unrest)}`;
+    return [`Israel — West Bank and Gaza: ${unrestLabel(s.palestine.unrest)}`, ...heldInside(s, id)].join(
+      ' — ',
+    );
   }
   const n = s.nations[id];
-  if (n.collapsed) return `${n.name} — government collapsed`;
-  const bits = [n.name];
+  if (n.collapsed) return [`${n.name} — government collapsed`, ...heldInside(s, id)].join(' — ');
+  const bits = [n.name, ...heldInside(s, id)];
   if (mode === 'relations') bits.push(`relations ${relationsLabel(n.relations)}`);
   else if (mode === 'stability') bits.push(stabilityLabel(n.stability));
   else

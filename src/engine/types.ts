@@ -33,9 +33,24 @@ export const NATION_IDS: NationId[] = [
   'syria',
 ];
 
-export type SupplierId = 'usa' | 'britain' | 'france' | 'dealer';
+export type SupplierId =
+  | 'usa'
+  | 'britain'
+  | 'france'
+  | 'dealer'
+  | 'russia'
+  | 'china'
+  | 'turkey';
 
-export const SUPPLIER_IDS: SupplierId[] = ['usa', 'britain', 'france', 'dealer'];
+export const SUPPLIER_IDS: SupplierId[] = [
+  'usa',
+  'britain',
+  'france',
+  'turkey',
+  'russia',
+  'china',
+  'dealer',
+];
 
 // ---------------------------------------------------------------------------
 // Directives — what the player queues up during a turn
@@ -78,6 +93,17 @@ export type StrategicDirective =
   | 'withdraw_brigade'
   | 'nuclear_strike';
 
+/**
+ * The three states with no border and an air force's worth of distance
+ * between us. They can only be reached from the air, and only by aircraft
+ * that can fly that far.
+ */
+export type RemoteId = 'iraq' | 'iran' | 'libya';
+
+export const REMOTE_IDS: RemoteId[] = ['iraq', 'iran', 'libya'];
+
+export type RemoteDirective = 'none' | 'strike_military' | 'strike_industrial' | 'strike_nuclear';
+
 export type PolicingDirective =
   | 'none'
   | 'post_brigade'
@@ -90,6 +116,8 @@ export interface Directives {
   diplomatic: Partial<Record<NationId, DiplomaticDirective>>;
   intel: Partial<Record<NationId, IntelDirective>>;
   strategic: Partial<Record<FrontId, StrategicDirective>>;
+  /** Long-range strikes on the states we do not border. */
+  remote: Partial<Record<RemoteId, RemoteDirective>>;
   /** Approaches to the capitals that are not in the region. */
   powers: Partial<Record<PowerId, PowerDirective>>;
   /** What to do about the armed groups that are not governments. */
@@ -217,6 +245,14 @@ export interface Front {
   mobilised: boolean;
   /** Consecutive months the line has been on the point of breaking. */
   collapseMonths: number;
+  /**
+   * 0..1 of their country we hold, measured from the border. Follows the war
+   * while it runs and is kept after a ceasefire — "any territory gains may be
+   * kept" — until the column is brought home.
+   */
+  occupation: number;
+  /** 0..1 of Israel they hold. Handed back under any ceasefire. */
+  lostGround: number;
   /** U.N. has declared this a military-free zone after a settled war. */
   demilitarised: boolean;
   /**
@@ -315,10 +351,19 @@ export interface Palestine {
   brigadesPosted: number;
   presence: 'full' | 'low';
   tactics: 'soft' | 'hard';
-  /** True once a homeland has been conceded at a summit. */
+  /** True once a homeland has been agreed — by both sides. */
   homelandCreated: boolean;
-  /** Set when the Second Intifada has been triggered. */
+  /** Set while an intifada is running. It can now burn out. */
   intifada: boolean;
+  /**
+   * Where the final-status question stands. Signing is no longer the end of
+   * it: the Palestinian side has to sign too, and at Camp David it did not.
+   */
+  finalStatus: 'none' | 'agreed' | 'israel_refused' | 'palestinians_refused' | 'absent';
+  /** The turn the current (or most recent) intifada broke out. */
+  intifadaStartTurn: number | null;
+  /** Consecutive months of calm while an intifada is running. */
+  quietMonths: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +424,21 @@ export interface Ending {
   style: string;
 }
 
+/** A war between two states, neither of them Israel. */
+export interface RegionalWar {
+  /** The side that started it. */
+  a: NationId;
+  b: NationId;
+  /** −100..100. Positive is `a` pushing into `b`; negative is the reverse. */
+  progress: number;
+  months: number;
+  /** Who is helping whom from outside. */
+  supporters: {
+    israel?: NationId;
+    powers: Partial<Record<PowerId, NationId>>;
+  };
+}
+
 export interface GameState {
   /** Months elapsed since the start. Turn 0 is June 2000. */
   turn: number;
@@ -405,6 +465,13 @@ export interface GameState {
    * papers always come first — that is the shape of the turn.
    */
   pendingInterstitial: 'summit' | 'budget' | null;
+  /** Which summit the interstitial is, when it is one. */
+  summitKind: 'regular' | 'camp_david' | 'taba';
+  /**
+   * Stories filed between papers — a summit's outcome, say, which happens
+   * after this month's paper and before next month's — printed next issue.
+   */
+  wire: { text: string; category: NewsCategory; weight: number }[];
   /** Set once the game is over. */
   ending: Ending | null;
   /** Running tallies used by the end-of-game analysis. */
@@ -420,6 +487,21 @@ export interface GameState {
   };
   /** Armed non-state groups, keyed by faction id. */
   factions: Record<string, FactionState>;
+  /** Wars between the other states. Israel's own wars live on `fronts`. */
+  wars: RegionalWar[];
+  /** Things that happen to the world, and change what it will tolerate. */
+  world: {
+    /** September 2001: whether it happened, was stopped, or has not come yet. */
+    nineEleven: 'pending' | 'happened' | 'foiled';
+    nineElevenTurn: number | null;
+    /** The emergency security grant is voted once. */
+    grantPaid: boolean;
+  };
+  /**
+   * The turn on which Israel last bombed each state. Moscow, Beijing and
+   * Tehran all have memories, and this is what they remember.
+   */
+  lastStruck: Partial<Record<NationId, number>>;
   /** Ids of scripted events that have already fired. */
   firedEvents: string[];
   /** Free-text log of everything that happened, newest first. */

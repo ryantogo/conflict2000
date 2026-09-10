@@ -13,7 +13,8 @@
  */
 
 import type { GameState } from './types';
-import { FRONTS, NATION_IDS } from './types';
+import { FRONTS, NATION_IDS, REMOTE_IDS } from './types';
+import { REACH } from './military';
 import { MOSSAD_CAPACITY, OP_FUNDS, committedCapacity } from './intelligence';
 import { LOBBY_COST, POWER_IDS, POWER_NAMES, RESTRAINT_MONTHS } from './powers';
 import { industrySpend } from './industry';
@@ -89,6 +90,7 @@ export function previewTurn(s: GameState): QueuedEffect[] {
   const hardPolicing = d.policing === 'harden';
   const strikes =
     Object.values(d.strategic).filter((x) => x && x.startsWith('strike')).length +
+    Object.values(d.remote).filter((x) => x && x !== 'none').length +
     Object.values(d.factions).filter((x) => x === 'strike').length;
   const invasions = Object.values(d.strategic).filter((x) => x === 'invade').length;
 
@@ -149,6 +151,17 @@ export function previewTurn(s: GameState): QueuedEffect[] {
     } else if (directive === 'withdraw') {
       out.push({ area: 'The borders', text: `Everything on the ${name} border comes home.` });
     }
+  }
+
+  // --- beyond the borders --------------------------------------------------
+  for (const id of REMOTE_IDS) {
+    const directive = d.remote[id];
+    if (!directive || directive === 'none') continue;
+    out.push({
+      area: 'Beyond the borders',
+      text: `Bombing ${s.nations[id].name} will be answered. ${REACH[id].answer}`,
+      tone: 'warn',
+    });
   }
 
   // --- covert --------------------------------------------------------------

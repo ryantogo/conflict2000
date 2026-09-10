@@ -195,6 +195,9 @@ export function endWar(s: GameState, id: NationId, notes: string[]): void {
   front.atWar = false;
   front.warMonths = 0;
   front.warProgress = 0;
+  // Our gains may be kept, as the text below says. Theirs are handed back:
+  // no Israeli cabinet signs a ceasefire that leaves a Syrian army in Galilee.
+  front.lostGround = 0;
   front.demilitarised = true;
   front.demilitarisedMonths = DEMILITARISED_MONTHS;
   n.atWarWith = n.atWarWith.filter((w) => w !== 'israel');

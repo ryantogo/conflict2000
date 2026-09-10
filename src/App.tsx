@@ -9,6 +9,8 @@ import type {
   PolicingDirective,
   PowerDirective,
   PowerId,
+  RemoteDirective,
+  RemoteId,
   StrategicDirective,
   SupplierId,
 } from './engine';
@@ -84,6 +86,11 @@ export default function App() {
     setStrategic: (id: FrontId, d: StrategicDirective) => {
       if (game.directives.strategic[id] === d) delete game.directives.strategic[id];
       else game.directives.strategic[id] = d;
+      touch();
+    },
+    setRemote: (id: RemoteId, d: RemoteDirective) => {
+      if (game.directives.remote[id] === d || d === 'none') delete game.directives.remote[id];
+      else game.directives.remote[id] = d;
       touch();
     },
     setPolicing: (d: PolicingDirective) => {

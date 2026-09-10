@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { GameState } from '../engine';
-import { budgetOffer, qualityPhrase, summitProposals } from '../engine';
+import { budgetOffer, qualityPhrase, summitKindOf, summitProposals } from '../engine';
 import { Panel, Row } from './bits';
 
 // ---------------------------------------------------------------------- title
@@ -45,19 +45,27 @@ export function Summit({
   const [decisions, setDecisions] = useState<Record<string, boolean>>({});
   const [attending, setAttending] = useState<boolean | null>(null);
 
-  const isCampDavid = s.year === 2000;
+  const kind = summitKindOf(s);
 
   if (attending === null) {
     return (
       <div className="stack" style={{ maxWidth: 700, margin: '0 auto' }}>
-        <Panel title={isCampDavid ? 'Camp David' : 'Middle Eastern summit'}>
+        <Panel
+          title={
+            kind === 'camp_david' ? 'Camp David' : kind === 'taba' ? 'Taba' : 'Middle Eastern summit'
+          }
+        >
           <p className="dim">
-            {isCampDavid
+            {kind === 'camp_david'
               ? 'The President has convened a summit at Camp David. Sixteen days have ' +
                 'been set aside. Arafat has said he is not ready. The Americans are ' +
                 'insisting anyway.'
-              : 'Called by the United Nations Security Council in response to the state ' +
-                'of the region.'}
+              : kind === 'taba'
+                ? 'The territories are burning and nothing was signed at Camp David. ' +
+                  'The negotiators are meeting at a hotel in Taba, on the Egyptian side ' +
+                  'of the border, for one last attempt. Nobody expects a second one.'
+                : 'Called by the United Nations Security Council in response to the state ' +
+                  'of the region.'}
           </p>
           <div className="btn-row" style={{ marginTop: 16 }}>
             <button className="btn primary" onClick={() => setAttending(true)}>
@@ -164,6 +172,11 @@ export function Budget({
             ? 'The U.S. have refused to give us any financial aid.'
             : `The U.S. have given a financial aid package worth $${offer.aid} million.`}
         </p>
+        {offer.grant > 0 && (
+          <p className="dim">
+            Congress has also voted an emergency security grant worth ${offer.grant} million.
+          </p>
+        )}
         <div className="rows">
           <Row label="Present defense budget" value={`$${s.israel.defenceBudget} million`} />
           <Row label="Percentage of G.N.P. on defense" value={`${s.israel.gnpPercent}%`} />

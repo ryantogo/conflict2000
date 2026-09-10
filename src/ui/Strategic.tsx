@@ -1,16 +1,28 @@
 import { useState } from 'react';
-import type { FactionDirective, FrontId, GameState, StrategicDirective } from '../engine';
+import type {
+  FactionDirective,
+  FrontId,
+  GameState,
+  RemoteDirective,
+  RemoteId,
+  StrategicDirective,
+} from '../engine';
 import {
   FRONTS,
+  REACH,
   REGIONAL_NORM,
+  REMOTE_IDS,
   assess,
   countOf,
   freeBrigades,
   grade,
+  longRangeCount,
   qualityLabel,
   frontActivityLabel,
   frontReport,
   israeliStrength,
+  relationsLabel,
+  remoteStrikeOptions,
   strategicOptions,
 } from '../engine';
 import type { SubTabItem } from './bits';
@@ -33,13 +45,72 @@ const FRONT_VIEWS: SubTabItem<FrontView>[] = [
   },
 ];
 
+/**
+ * Iraq, Iran and Libya. No border, no army to mass against, and nothing on
+ * the menu except what an air force with enough range can do.
+ */
+function BeyondTheBorders({
+  s,
+  setRemote,
+}: {
+  s: GameState;
+  setRemote: (id: RemoteId, d: RemoteDirective) => void;
+}) {
+  const [selected, setSelected] = useState<RemoteId>('iraq');
+  const n = s.nations[selected];
+
+  return (
+    <Panel
+      title="Beyond our borders"
+      right={
+        <span className="mono small">
+          {longRangeCount(s.israel.stockpile.equipment)} long-range aircraft
+        </span>
+      }
+    >
+      <div className="choices">
+        {REMOTE_IDS.map((id) => {
+          const target = s.nations[id];
+          return (
+            <button
+              key={id}
+              className={`choice${selected === id ? ' selected' : ''}`}
+              onClick={() => setSelected(id)}
+            >
+              <span className="tick">{selected === id ? '▸' : ''}</span>
+              <span style={{ flex: 1, display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                <span>{target.name}</span>
+                <span className="mono small faint">
+                  {target.collapsed ? 'collapsed' : relationsLabel(target.relations)}
+                  {s.directives.remote[id] ? <span className="amber"> ●</span> : null}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="small faint" style={{ margin: '10px 0' }}>
+        A raid on {n.capital} needs {REACH[selected].need} long-range strike aircraft and
+        crosses {s.nations[REACH[selected].overflight].name}’s airspace. {REACH[selected].answer}
+      </p>
+      <Choices
+        options={remoteStrikeOptions(s, selected)}
+        selected={s.directives.remote[selected]}
+        onSelect={(d) => setRemote(selected, d)}
+      />
+    </Panel>
+  );
+}
+
 export function Strategic({
   s,
   setStrategic,
+  setRemote,
   setFaction,
 }: {
   s: GameState;
   setStrategic: (id: FrontId, d: StrategicDirective) => void;
+  setRemote: (id: RemoteId, d: RemoteDirective) => void;
   setFaction: (id: string, d: FactionDirective) => void;
 }) {
   const [selected, setSelected] = useState<FrontId>('lebanon');
@@ -191,6 +262,8 @@ export function Strategic({
             onSelect={(d) => setStrategic(selected, d)}
           />
         </Panel>
+
+        <BeyondTheBorders s={s} setRemote={setRemote} />
       </div>
     </div>
   );

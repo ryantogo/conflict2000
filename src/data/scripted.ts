@@ -14,6 +14,9 @@ import type { Rng } from '../engine/rng';
 import { expand } from './headlines';
 import { adjustRelations } from '../engine/powers';
 
+/** The chance the September 2001 plot is broken up before it is carried out. */
+export const NINE_ELEVEN_FOILED = 0.15;
+
 export interface ScriptedEvent {
   id: string;
   /** Year and month (0-indexed) on which it becomes eligible. */
@@ -78,34 +81,8 @@ export const SCRIPTED: ScriptedEvent[] = [
       ];
     },
   },
-  {
-    // 28 September 2000. Conditional: a calm West Bank does not ignite.
-    id: 'second-intifada',
-    year: 2000,
-    month: 8,
-    // A summit that collapsed over Jerusalem is reason enough on its own;
-    // otherwise the territories have to already be restive.
-    when: (s) =>
-      !s.palestine.homelandCreated &&
-      (s.firedEvents.includes('camp-david-refused') || s.palestine.unrest >= 3),
-    fire: (s, rng) => {
-      s.palestine.intifada = true;
-      s.palestine.unrest = clamp(s.palestine.unrest + rng.int(2, 4), 0, 10);
-      s.israel.popularity = clamp(s.israel.popularity - 12, 0, 100);
-      s.tension = clamp(s.tension + 12, 0, 100);
-      for (const n of Object.values(s.nations)) {
-        if (!n.collapsed) {
-          n.relationsPoints = clamp(n.relationsPoints - 12, -100, 100);
-          n.relations = pointsToRelations(n.relationsPoints);
-        }
-      }
-      return [
-        { text: 'Temple Mount visit sparks riots across the territories', weight: 3 },
-        { text: 'Al-Aqsa Intifada: the streets are gone', weight: 3 },
-        { text: 'Arab capitals recall ambassadors from Tel Aviv', weight: 2 },
-      ];
-    },
-  },
+  // The Second Intifada used to be here, on rails for 28 September 2000. It is
+  // now a monthly hazard in `palestine.ts`, shaped by how Camp David ended.
   {
     // 7 October 2000.
     id: 'hezbollah-abduction',
@@ -141,6 +118,36 @@ export const SCRIPTED: ScriptedEvent[] = [
       adjustRelations(s, 'usa', -5);
       return [
         { text: 'Bush sworn in; White House signals step back from the process', weight: 2 },
+      ];
+    },
+  },
+  {
+    // 11 September 2001. Nineteen men, and a plot that very nearly came apart
+    // more than once — the Moussaoui arrest, the Phoenix memo — so it does not
+    // always happen.
+    id: 'nine-eleven',
+    year: 2001,
+    month: 8,
+    fire: (s, rng) => {
+      if (rng.chance(NINE_ELEVEN_FOILED)) {
+        s.world.nineEleven = 'foiled';
+        adjustRelations(s, 'usa', 3);
+        return [
+          { text: 'FBI arrests hijacking cell days before planned attacks', weight: 3 },
+          { text: 'Israeli intelligence credited with tip-off', weight: 1 },
+        ];
+      }
+      s.world.nineEleven = 'happened';
+      s.world.nineElevenTurn = s.turn;
+      // Washington's threat perception changes overnight, and so does what it
+      // is prepared to sell, pay for and look away from.
+      adjustRelations(s, 'usa', 8);
+      s.israel.suppliers.usa.loyalty = clamp(s.israel.suppliers.usa.loyalty + 10, 0, 100);
+      s.tension = clamp(s.tension + 6, 0, 100);
+      return [
+        { text: 'Terror attacks on New York and Washington', weight: 3 },
+        { text: 'Bush declares war on terror: <Either you are with us, or with the terrorists>', weight: 3 },
+        { text: 'Washington asks Israel to hold fire while it builds a coalition', weight: 2 },
       ];
     },
   },

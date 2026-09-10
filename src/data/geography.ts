@@ -452,6 +452,111 @@ export const LEVANT_LABEL_OVERRIDES: Record<string, Pt | null> = {
   iran: null,
 };
 
+// --- shared frontiers, for drawing ground that has changed hands -------------
+
+/**
+ * Egypt and Libya share a border off the west edge of the frame. Egypt's ring
+ * runs out to 23°E so that SVG has something to clip; the real frontier is
+ * nearer 25°E, and that is the line an advancing Libyan army starts from.
+ */
+const egyLib: Pt[] = [
+  [25.0, 31.55],
+  [25.0, 21.5],
+];
+
+/**
+ * Every land border between two states that can fight each other, as the same
+ * segments the rings are built from. A pair missing from this list — Iran and
+ * Syria, say — has no common frontier, and a war between them has no ground
+ * to draw.
+ */
+export const SHARED_BORDERS: { a: string; b: string; line: Pt[] }[] = [
+  { a: 'israel', b: 'lebanon', line: isrLeb },
+  { a: 'israel', b: 'syria', line: isrSyr },
+  { a: 'israel', b: 'jordan', line: isrJor },
+  { a: 'israel', b: 'egypt', line: isrEgy },
+  { a: 'lebanon', b: 'syria', line: lebSyr },
+  { a: 'syria', b: 'iraq', line: syrIrq },
+  { a: 'syria', b: 'jordan', line: syrJor },
+  { a: 'jordan', b: 'iraq', line: jorIrq },
+  { a: 'iraq', b: 'iran', line: irqIrn },
+  { a: 'egypt', b: 'libya', line: egyLib },
+];
+
+export function borderBetween(x: string, y: string): Pt[] | null {
+  const hit = SHARED_BORDERS.find((b) => (b.a === x && b.b === y) || (b.a === y && b.b === x));
+  return hit ? hit.line : null;
+}
+
+/** A point in projected map units. */
+export type XY = [number, number];
+
+/**
+ * The band of `defender` that an army advancing across `border` holds, in
+ * projected map units, for clipping to the defender's own outline.
+ *
+ * "A quarter of the country" is measured as depth, not area: the band runs
+ * inward from the border, perpendicular to it, for `fraction` of the distance
+ * to the defender's furthest point. That is how a front line moves and how a
+ * newspaper map draws one, and it keeps the shading anchored to the frontier
+ * it actually crossed. The ends are extended far past the border so that the
+ * clip — not this polygon — decides where the band stops sideways.
+ */
+export function occupationPolygon(border: Pt[], defender: Pt[], fraction: number): XY[] {
+  const f = Math.max(0, Math.min(1, fraction));
+  if (f === 0 || border.length < 2 || defender.length < 3) return [];
+
+  const P: XY[] = border.map(([lon, lat]) => [projectX(lon), projectY(lat)]);
+  const R: XY[] = defender.map(([lon, lat]) => [projectX(lon), projectY(lat)]);
+
+  const first = P[0];
+  const last = P[P.length - 1];
+  const len = Math.hypot(last[0] - first[0], last[1] - first[1]) || 1;
+  const ux = (last[0] - first[0]) / len;
+  const uy = (last[1] - first[1]) / len;
+
+  const mid: XY = [
+    P.reduce((a, p) => a + p[0], 0) / P.length,
+    P.reduce((a, p) => a + p[1], 0) / P.length,
+  ];
+  const centre: XY = [
+    R.reduce((a, p) => a + p[0], 0) / R.length,
+    R.reduce((a, p) => a + p[1], 0) / R.length,
+  ];
+
+  // The normal that points into the defender's country.
+  let nx = -uy;
+  let ny = ux;
+  if ((centre[0] - mid[0]) * nx + (centre[1] - mid[1]) * ny < 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+
+  const depth = Math.max(...R.map(([x, y]) => (x - mid[0]) * nx + (y - mid[1]) * ny));
+  if (depth <= 0) return [];
+  const d = depth * f;
+
+  // Long enough to run past any country in the frame.
+  const EXTEND = 4000;
+  const line: XY[] = [
+    [first[0] - ux * EXTEND, first[1] - uy * EXTEND],
+    ...P,
+    [last[0] + ux * EXTEND, last[1] + uy * EXTEND],
+  ];
+  // A hair behind the border, so no seam shows along the frontier itself.
+  const BEHIND = 2;
+  const near = line.map(([x, y]): XY => [x - nx * BEHIND, y - ny * BEHIND]);
+  const far = line
+    .slice()
+    .reverse()
+    .map(([x, y]): XY => [x + nx * d, y + ny * d]);
+  return [...near, ...far];
+}
+
+export function xyPath(poly: XY[]): string {
+  return poly.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join('') + 'Z';
+}
+
 export const COUNTRY_RINGS: Record<string, Pt[]> = {
   israel: ISRAEL_RING,
   egypt: EGYPT_RING,

@@ -12,7 +12,7 @@
  * tell you what they want.
  */
 
-import type { GameState } from './types';
+import type { GameState, NationId } from './types';
 import { clamp } from './ladders';
 import type { Rng } from './rng';
 import { coalitionReact } from './coalition';
@@ -102,6 +102,36 @@ export function adjustWest(s: GameState, delta: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// After September 2001
+// ---------------------------------------------------------------------------
+
+/**
+ * The State Department's list of state sponsors of terrorism, as it stood in
+ * 2001, less the members that are not in this game.
+ */
+export const TERROR_LIST: NationId[] = ['iran', 'iraq', 'libya', 'syria'];
+
+/** Washington is fighting a war on terror, and has changed what it will tolerate. */
+export function warOnTerror(s: GameState): boolean {
+  return s.world.nineEleven === 'happened';
+}
+
+/**
+ * For three months after the attacks Washington is assembling a coalition
+ * that needs Arab governments in it, and wants Israel to hold very still.
+ */
+export function coalitionBuilding(s: GameState): boolean {
+  return (
+    warOnTerror(s) && s.world.nineElevenTurn !== null && s.turn - s.world.nineElevenTurn < 3
+  );
+}
+
+/** Have we bombed a government, as opposed to an armed group, this half-year? */
+function struckAStateRecently(s: GameState): boolean {
+  return Object.values(s.lastStruck).some((t) => t !== undefined && s.turn - t < 6);
+}
+
+// ---------------------------------------------------------------------------
 // What they want, and what we can do about it
 // ---------------------------------------------------------------------------
 
@@ -122,17 +152,26 @@ export const DEMAND_TEXT: Record<NonNullable<Demand>, string> = {
   settle_the_war: 'a ceasefire on the border',
   ease_policing: 'an easing of the policing of the territories',
   nuclear_restraint: 'no further nuclear announcements',
-  stop_the_dealer: 'an end to our purchases on the grey market',
+  stop_the_dealer: 'an end to our arms purchases outside the West',
 };
 
 export function demandOf(s: GameState, id: PowerId): Demand {
   // Ordered by how loudly it is being said. A capital presses one thing.
   if (Object.values(s.fronts).some((f) => f.atWar)) return 'settle_the_war';
-  if (s.stats.strikesOrdered > 2) return 'halt_strikes';
+  // After September 2001, strikes on the armed groups are Washington's own
+  // policy. Only strikes on governments still draw the demand.
+  if (s.stats.strikesOrdered > 2 && (!warOnTerror(s) || struckAStateRecently(s))) {
+    return 'halt_strikes';
+  }
   if (s.israel.nuclearPosture !== 'opacity') return 'nuclear_restraint';
   if (s.palestine.tactics === 'hard' && s.palestine.brigadesPosted > 0) return 'ease_policing';
   // Paris and London mind the grey market rather less than Washington does.
-  if (id === 'usa' && s.israel.suppliers.dealer.spent > 200) return 'stop_the_dealer';
+  // Moscow and Beijing count double: the dealer is merely embarrassing, and
+  // buying from a rival's state factories is a policy.
+  const { dealer, russia, china } = s.israel.suppliers;
+  if (id === 'usa' && dealer.spent + (russia.spent + china.spent) * 2 > 200) {
+    return 'stop_the_dealer';
+  }
   return null;
 }
 

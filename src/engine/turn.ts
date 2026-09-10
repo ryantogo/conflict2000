@@ -24,14 +24,19 @@ import { endWar, expireMandates, resolveDiplomacy } from './diplomacy';
 import { driftInternals, resolveIntelligence } from './intelligence';
 import { redrawAssessments } from './assessment';
 import { resolveFactions, resolveSuccessors } from './factions';
-import { resolveCombat, resolveStrategic } from './military';
+import { resolveCombat, resolveRemote, resolveStrategic } from './military';
 import { resolveDeliveries, resolveReadiness, updateEmbargoes } from './arms';
 import { recomputeOverhead, resolveProduction } from './industry';
-import { resolvePalestine } from './palestine';
+import {
+  palestinianAcceptance,
+  resolveOutbreak,
+  resolvePalestine,
+  summitKindOf,
+} from './palestine';
 import { holocaustCheck, resolveNuclear } from './nuclear';
 import { runAi } from './ai';
 import { runRearmament } from './procurement';
-import { coalitionReact, coalitionSeats, resolveCoalition } from './coalition';
+import { MAJORITY, coalitionReact, coalitionSeats, resolveCoalition } from './coalition';
 
 /**
  * What a Palestinian homeland is worth to each capital in the region, and it
@@ -75,6 +80,7 @@ import {
   adjustRelations,
   relationsWith,
   resolvePowers,
+  warOnTerror,
 } from './powers';
 import type { PowerId } from './powers';
 
@@ -99,7 +105,9 @@ export function startGame(s: GameState): GameState {
 
 export function resolveTurn(s: GameState): GameState {
   const rng = new Rng(s.rngSeed);
-  const events: RawEvent[] = [];
+  // Whatever was filed since the last paper leads this one.
+  const events: RawEvent[] = [...s.wire];
+  s.wire = [];
 
   const push = (
     arr: { text: string; weight: number }[],
@@ -127,6 +135,7 @@ export function resolveTurn(s: GameState): GameState {
   events.push(...resolveIntelligence(s, rng));
   events.push(...resolvePowers(s, rng));
   events.push(...resolveStrategic(s, rng));
+  events.push(...resolveRemote(s, rng));
   push(resolveNuclear(s, rng), 'nuclear');
   events.push(...resolvePalestine(s, rng));
   // The groups nobody governs move after the states do, because most of what
@@ -174,8 +183,9 @@ export function resolveTurn(s: GameState): GameState {
     s.year++;
   }
 
-  // 7. History, on its own schedule.
+  // 7. History, on its own schedule — and the territories, on theirs.
   push(runScripted(s, rng), 'diplomacy');
+  events.push(...resolveOutbreak(s, rng));
 
   // 8. Endings.
   const ending = checkEndings(s, rng);
@@ -190,7 +200,15 @@ export function resolveTurn(s: GameState): GameState {
   // 9. Queue anything that interrupts the normal loop. It waits until the
   //    player has read the papers — and the papers trail it.
   s.phase = 'newspaper';
-  if (s.month === 6 && shouldHoldSummit(s)) {
+  if (tabaDue(s)) {
+    // The last round. It happens once, whenever the territories are burning
+    // and nothing has been signed, and it waits for no calendar.
+    s.firedEvents.push('taba');
+    s.summitKind = 'taba';
+    s.pendingInterstitial = 'summit';
+    events.push({ text: summitTrail(s, rng), category: 'diplomacy', weight: 3 });
+  } else if (s.month === 6 && shouldHoldSummit(s)) {
+    s.summitKind = s.year === 2000 ? 'camp_david' : 'regular';
     s.pendingInterstitial = 'summit';
     events.push({ text: summitTrail(s, rng), category: 'diplomacy', weight: 3 });
   } else if (s.month === 11) {
@@ -384,6 +402,14 @@ function buildBriefing(s: GameState): string[] {
     out.push('The U.S Senate is trying to make arms trade with Israel difficult.');
   if (isr.reserves < 100)
     out.push('We now have less than 100,000 people to call up.');
+  if (warOnTerror(s) && s.world.nineElevenTurn !== null && s.turn - s.world.nineElevenTurn < 12) {
+    out.push(
+      s.turn - s.world.nineElevenTurn < 3
+        ? 'Washington is assembling its coalition and wants us to hold very still.'
+        : 'Washington is fighting a war on terror. It forgives strikes on the armed groups, ' +
+            'and on the states that sponsor them, far more readily than it used to.',
+    );
+  }
 
   const wars = FRONTS.filter((f) => s.fronts[f].atWar);
   if (wars.length === 1)
@@ -440,9 +466,28 @@ export function officialReport(s: GameState): string[] {
 // Summit
 // ---------------------------------------------------------------------------
 
+/**
+ * Taba: January 2001, after an intifada has had three months to show what
+ * the failure at Camp David cost. Queued once, when the territories are
+ * burning and nothing has been agreed.
+ */
+function tabaDue(s: GameState): boolean {
+  const p = s.palestine;
+  if (s.firedEvents.includes('taba')) return false;
+  if (!p.intifada || p.homelandCreated || p.finalStatus === 'agreed') return false;
+  if (p.intifadaStartTurn === null) return false;
+  return s.year >= 2001 && s.turn - p.intifadaStartTurn >= 3;
+}
+
 /** The front page on the morning the delegations arrive. */
 function summitTrail(s: GameState, rng: Rng): string {
-  if (s.year === 2000) {
+  if (s.summitKind === 'taba') {
+    return rng.pick([
+      'Negotiators meet at Taba as the intifada burns',
+      'Taba: one last attempt before the clock runs out',
+    ]);
+  }
+  if (s.summitKind === 'camp_david') {
     return rng.pick([
       'Camp David: Clinton gambles everything on sixteen days',
       'Barak and Arafat fly to Maryland as talks begin',
@@ -499,12 +544,27 @@ export function summitProposals(s: GameState): SummitProposal[] {
     });
   }
 
-  // Camp David is convened precisely to settle this, so in July 2000 it is on
-  // the table whatever the state of the territories. Later summits only raise
-  // it once there is visible trouble.
-  const homelandOnTable = s.year === 2000 || s.palestine.unrest >= 3;
+  // Camp David and Taba are convened precisely to settle this, so there it is
+  // on the table whatever the state of the territories. Later summits only
+  // raise it once there is visible trouble.
+  const kind = summitKindOf(s);
+  const homelandOnTable = kind !== 'regular' || s.palestine.unrest >= 3;
   if (!s.palestine.homelandCreated && homelandOnTable) {
-    if (s.year === 2000) {
+    if (kind === 'taba') {
+      out.push({
+        id: 'homeland',
+        title: 'TABA — THE CLINTON PARAMETERS',
+        body:
+          'The negotiators have gone further than at Camp David: a state on nearly all ' +
+          'of the West Bank and Gaza, the Arab neighbourhoods of Jerusalem to the ' +
+          'Palestinians and the Jewish ones to us, and a formula on refugees neither ' +
+          'side will say aloud. Clinton leaves office within days and the election ' +
+          'after that. Signing may end the intifada — if Arafat signs too. The right ' +
+          'will say you are negotiating without a mandate, and they will be right.',
+        acceptLabel: 'Sign at Taba',
+        rejectLabel: 'Refuse — not under fire, and not now',
+      });
+    } else if (kind === 'camp_david') {
       // The real thing: statehood, borders, and the question nobody solved.
       out.push({
         id: 'homeland',
@@ -515,9 +575,10 @@ export function summitProposals(s: GameState): SummitProposal[] {
           'for the settlement blocs; Palestinian sovereignty over the Arab quarters ' +
           'of Jerusalem; no right of return, but an international fund. Clinton wants ' +
           'an answer before the delegations leave Maryland. ' +
-          'Signing ends the Palestinian problem and buys you Washington and the world. ' +
-          'It also splits your coalition, and the Knesset will not forgive the ' +
-          'division of Jerusalem.',
+          'If both sides sign, it ends the Palestinian problem and buys you Washington ' +
+          'and the world. Arafat has said he is not ready, and your signature does not ' +
+          'bind his. Either way, offering it splits your coalition, and the Knesset ' +
+          'will not forgive the division of Jerusalem.',
         acceptLabel: 'Sign the framework',
         rejectLabel: 'Refuse — no deal is better than this deal',
       });
@@ -556,7 +617,7 @@ export function summitProposals(s: GameState): SummitProposal[] {
     });
   }
 
-  if (s.tension > 50) {
+  if (s.tension > 50 && kind !== 'taba') {
     out.push({
       id: 'armscap',
       title: 'SUMMIT PROPOSAL',
@@ -583,6 +644,9 @@ export function applySummit(
   attended = true,
 ): string[] {
   const notes: string[] = [];
+  // Summits are resolved outside a month's turn, so they carry their own
+  // stream of chance and hand it back when they are done.
+  const rng = new Rng(s.rngSeed);
 
   if (!attended) {
     // The absence is noted in every capital that matters — which is what the
@@ -594,6 +658,7 @@ export function applySummit(
     if (s.year === 2000 && !s.firedEvents.includes('camp-david-refused')) {
       s.firedEvents.push('camp-david-refused');
     }
+    if (s.year === 2000 || s.summitKind !== 'regular') s.palestine.finalStatus = 'absent';
     notes.push('Israel did not attend the summit. The chair stayed empty.');
     for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} — ${n}`);
     s.phase = 'planning';
@@ -618,37 +683,9 @@ export function applySummit(
     }
 
     if (id === 'homeland') {
-      if (accepted) {
-        s.palestine.homelandCreated = true;
-        s.palestine.unrest = 0;
-        s.palestine.intifada = false;
-        s.palestine.brigadesPosted = 0;
-        s.israel.prestige = clamp(s.israel.prestige + 14, 0, 100);
-        adjustRelations(s, 'usa', 18);
-        s.tension = clamp(s.tension - 15, 0, 100);
-        // The right will never forgive it, and this is where a government
-        // assembled out of Meretz and the NRP discovers it cannot hold both.
-        s.israel.popularity = clamp(s.israel.popularity - 14, 0, 100);
-        coalitionReact(s, 'territorial', 40);
-        for (const n of Object.values(s.nations)) {
-          if (!n.collapsed) {
-            n.relationsPoints = clamp(n.relationsPoints + HOMELAND_GOODWILL[n.id], -100, 100);
-          }
-        }
-        notes.push('A Palestinian homeland has been agreed. The PLO stands down.');
-      } else {
-        adjustRelations(s, 'usa', -8);
-        s.palestine.unrest = clamp(s.palestine.unrest + 1.5, 0, 10);
-        // At home, refusing plays well — with exactly half the government.
-        s.israel.popularity = clamp(s.israel.popularity + 6, 0, 100);
-        coalitionReact(s, 'territorial', -12);
-        // A collapsed final-status summit is what the autumn was made of.
-        // Remember it, so September has a reason to catch fire.
-        if (s.year === 2000 && !s.firedEvents.includes('camp-david-refused')) {
-          s.firedEvents.push('camp-david-refused');
-        }
-        notes.push('Israel rejected the homeland proposal. The talks broke up without agreement.');
-      }
+      if (!accepted) refuseHomeland(s, notes);
+      else if (rng.chance(palestinianAcceptance(s))) agreeHomeland(s, notes);
+      else palestiniansRefuse(s, notes);
     }
 
     if (id.startsWith('embargo:')) {
@@ -683,17 +720,131 @@ export function applySummit(
   }
 
   for (const n of notes) s.log.unshift(`${dateLine(s.year, s.month)} — ${n}`);
+  // The outcome matters too much to leave in the cabinet notes alone.
+  s.briefing = [...notes, ...s.briefing];
+  s.rngSeed = rng.seed;
   s.phase = 'planning';
   return notes;
+}
+
+/** Both signatures. The question comes off the table. */
+function agreeHomeland(s: GameState, notes: string[]): void {
+  const kind = summitKindOf(s);
+  const p = s.palestine;
+  p.homelandCreated = true;
+  p.finalStatus = 'agreed';
+  p.unrest = 0;
+  p.intifada = false;
+  p.quietMonths = 0;
+  p.brigadesPosted = 0;
+  if (kind === 'camp_david') s.firedEvents.push('camp-david-agreed');
+  s.israel.prestige = clamp(s.israel.prestige + 14, 0, 100);
+  adjustRelations(s, 'usa', 18);
+  s.tension = clamp(s.tension - 15, 0, 100);
+  // The right will never forgive it, and this is where a government
+  // assembled out of Meretz and the NRP discovers it cannot hold both.
+  s.israel.popularity = clamp(s.israel.popularity - 14, 0, 100);
+  coalitionReact(s, 'territorial', 40);
+  // At Taba it is worse for a government without a majority: signing under
+  // fire, weeks before an election, with no mandate to do it.
+  if (kind === 'taba' && coalitionSeats(s) < MAJORITY) {
+    s.israel.popularity = clamp(s.israel.popularity - 6, 0, 100);
+  }
+  for (const n of Object.values(s.nations)) {
+    if (!n.collapsed) {
+      n.relationsPoints = clamp(n.relationsPoints + HOMELAND_GOODWILL[n.id], -100, 100);
+    }
+  }
+  notes.push('Both sides have signed. A Palestinian state will be created, and the PLO stands down.');
+  s.wire.push({
+    text:
+      kind === 'camp_david'
+        ? 'Camp David: Barak and Arafat sign the framework'
+        : kind === 'taba'
+          ? 'Taba: a Palestinian state agreed at the eleventh hour'
+          : 'Summit agrees a Palestinian homeland',
+    category: 'palestine',
+    weight: 3,
+  });
+}
+
+/**
+ * We signed and they did not. The world gives us credit for going further
+ * than anybody had, and the country rallies to the premier who offered
+ * everything and was turned down — "there is no partner" is a popular thing
+ * to be able to say. The right still punishes the offer, though less than a
+ * deal it would have had to live with; and the territories are left with a
+ * failed summit and nothing to show for it.
+ *
+ * The first version charged the offer at full price and then the intifada on
+ * top, and a passive premier who signed and was refused survived two games
+ * in fifty-eight. That was historically defensible and made the one choice
+ * the game presents as statesmanlike a coin flip on death.
+ */
+function palestiniansRefuse(s: GameState, notes: string[]): void {
+  const kind = summitKindOf(s);
+  const p = s.palestine;
+  p.finalStatus = 'palestinians_refused';
+  adjustRelations(s, 'usa', 12);
+  adjustRelations(s, 'britain', 6);
+  adjustRelations(s, 'france', 5);
+  s.israel.prestige = clamp(s.israel.prestige + 6, 0, 100);
+  s.israel.popularity = clamp(s.israel.popularity + 4, 0, 100);
+  coalitionReact(s, 'territorial', kind === 'taba' ? 12 : 20);
+  p.unrest = clamp(p.unrest + 1, 0, 10);
+  s.tension = clamp(s.tension + 3, 0, 100);
+  notes.push('Israel signed. Arafat did not, and the talks broke up without agreement.');
+  s.wire.push({
+    text:
+      kind === 'camp_david'
+        ? 'Arafat walks out of Camp David'
+        : kind === 'taba'
+          ? 'Taba talks collapse as Arafat holds out'
+          : 'Palestinians reject the homeland offer',
+    category: 'palestine',
+    weight: 3,
+  });
+}
+
+/** We said no. */
+function refuseHomeland(s: GameState, notes: string[]): void {
+  const kind = summitKindOf(s);
+  s.palestine.finalStatus = 'israel_refused';
+  adjustRelations(s, 'usa', kind === 'taba' ? -5 : -8);
+  s.palestine.unrest = clamp(s.palestine.unrest + 1.5, 0, 10);
+  // At home, refusing plays well — with exactly half the government.
+  s.israel.popularity = clamp(s.israel.popularity + (kind === 'taba' ? 3 : 6), 0, 100);
+  coalitionReact(s, 'territorial', kind === 'taba' ? -8 : -12);
+  if (kind === 'taba') coalitionReact(s, 'hawkish', 4);
+  // A collapsed final-status summit is what the autumn was made of.
+  if (s.year === 2000 && !s.firedEvents.includes('camp-david-refused')) {
+    s.firedEvents.push('camp-david-refused');
+  }
+  notes.push('Israel rejected the proposal. The talks broke up without agreement.');
+  s.wire.push({
+    text:
+      kind === 'camp_david'
+        ? 'Camp David collapses: Israel will not divide Jerusalem'
+        : kind === 'taba'
+          ? 'Israel walks away from Taba'
+          : 'Israel rejects summit homeland plan',
+    category: 'palestine',
+    weight: 3,
+  });
 }
 
 // ---------------------------------------------------------------------------
 // December budget
 // ---------------------------------------------------------------------------
 
+/** The emergency security grant voted after September 2001, $M. Once. */
+const EMERGENCY_GRANT = 400;
+
 export interface BudgetOffer {
   aid: number;
   aidRefused: boolean;
+  /** A one-off emergency grant on top of the aid, or zero. */
+  grant: number;
   canGrowArmy: boolean;
   armyCapped: boolean;
   /** The reserve pool is too thin to stand up two more brigades. */
@@ -705,12 +856,16 @@ export function budgetOffer(s: GameState): BudgetOffer {
   const aggression =
     s.stats.warsStarted * 8 + s.stats.strikesOrdered * 3 + s.stats.nukesUsed * 40;
   const base = (relationsWith(s, 'usa') / 100) * 1800;
-  const aid = Math.max(0, Math.round(base - aggression * 6));
+  // After September 2001 Washington pays for the front line of its own war.
+  const wartime = warOnTerror(s) ? 1.25 : 1;
+  const aid = Math.max(0, Math.round((base - aggression * 6) * wartime));
   const capped = s.firedEvents.includes(`armscap-${s.year}`);
   const manpower = s.israel.reserves >= BRIGADE_MANPOWER;
+  const embargoed = s.israel.suppliers.usa.embargoed;
   return {
     aid,
-    aidRefused: aid <= 0 || s.israel.suppliers.usa.embargoed,
+    aidRefused: aid <= 0 || embargoed,
+    grant: warOnTerror(s) && !s.world.grantPaid && !embargoed ? EMERGENCY_GRANT : 0,
     canGrowArmy: !capped && manpower,
     armyCapped: capped,
     /** Distinct from the arms cap: nobody forbade it, there is simply nobody left. */
@@ -731,6 +886,11 @@ export function applyBudget(
     notes.push(`The U.S. have given a financial aid package worth $${offer.aid} million.`);
   } else {
     notes.push('The U.S. have refused to give us any financial aid.');
+  }
+  if (offer.grant > 0) {
+    s.israel.funds += offer.grant;
+    s.world.grantPaid = true;
+    notes.push(`Congress has voted an emergency security grant of $${offer.grant} million.`);
   }
 
   if (spending === 'increase') {

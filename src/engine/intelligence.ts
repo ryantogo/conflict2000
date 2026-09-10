@@ -367,6 +367,12 @@ export function collapseGovernment(
   n.stability = 0;
   n.atWarWith = [];
   n.pactWith = [];
+  // Nobody is at war with a government that no longer exists. The victor's
+  // list used to be tidied by whichever caller happened to remember.
+  s.wars = s.wars.filter((w) => w.a !== id && w.b !== id);
+  for (const other of Object.values(s.nations)) {
+    other.atWarWith = other.atWarWith.filter((x) => x !== id);
+  }
   s.tension = clamp(s.tension + 5, 0, 100);
   // Any front against them goes quiet — there is nobody left to command it.
   if (n.isFront) {

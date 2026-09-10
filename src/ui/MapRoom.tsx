@@ -1,8 +1,13 @@
 import { useState } from 'react';
-import type { FrontId, GameState, NationId } from '../engine';
+import type { FrontId, GameState, NationId, RemoteId } from '../engine';
 import {
   MOSSAD_CAPACITY,
   NATION_IDS,
+  occupationLabel,
+  occupations,
+  REACH,
+  REMOTE_IDS,
+  remoteStrikeOptions,
   committedCapacity,
   diplomaticOptions,
   frontActivityLabel,
@@ -36,6 +41,10 @@ const FRONT_IDS: FrontId[] = ['egypt', 'jordan', 'lebanon', 'syria'];
 
 function isFront(id: NationId | 'israel'): id is FrontId {
   return (FRONT_IDS as string[]).includes(id);
+}
+
+function isRemote(id: NationId | 'israel'): id is RemoteId {
+  return (REMOTE_IDS as string[]).includes(id);
 }
 
 export function MapRoom({ s, h }: { s: GameState; h: PlanningHandlers }) {
@@ -116,6 +125,36 @@ export function MapRoom({ s, h }: { s: GameState; h: PlanningHandlers }) {
   );
 }
 
+/** Ground this country has lost, and ground it has taken, in words. */
+function GroundRows({ s, id }: { s: GameState; id: NationId | 'israel' }) {
+  const name = (x: NationId | 'israel') => (x === 'israel' ? 'Israel' : s.nations[x].name);
+  const all = occupations(s);
+  return (
+    <>
+      {all
+        .filter((o) => o.held === id)
+        .map((o) => (
+          <Row
+            key={`lost-${o.holder}`}
+            label="Territory lost"
+            value={`${name(o.holder)} holds ${occupationLabel(o.share)}`}
+            tone={id === 'israel' ? 'red' : 'amber'}
+          />
+        ))}
+      {all
+        .filter((o) => o.holder === id)
+        .map((o) => (
+          <Row
+            key={`held-${o.held}`}
+            label="Territory taken"
+            value={`${occupationLabel(o.share)} of ${name(o.held)}`}
+            tone={id === 'israel' ? 'teal' : ''}
+          />
+        ))}
+    </>
+  );
+}
+
 function NationPanel({
   s,
   h,
@@ -170,6 +209,7 @@ function NationPanel({
           {n.pactWith.length > 0 && (
             <Row label="Military pacts" value={n.pactWith.join(', ')} tone="teal" />
           )}
+          <GroundRows s={s} id={id} />
         </div>
 
         {front?.atWar && (
@@ -205,6 +245,19 @@ function NationPanel({
           />
         </Panel>
       )}
+
+      {isRemote(id) && (
+        <Panel title="Long-range strike">
+          <p className="small faint" style={{ marginTop: 0 }}>
+            {REACH[id].answer}
+          </p>
+          <Choices
+            options={remoteStrikeOptions(s, id)}
+            selected={s.directives.remote[id]}
+            onSelect={(d) => h.setRemote(id, d)}
+          />
+        </Panel>
+      )}
     </>
   );
 }
@@ -223,6 +276,7 @@ function IsraelPanel({ s, h }: { s: GameState; h: PlanningHandlers }) {
           <Row label="Brigades policing" value={s.palestine.brigadesPosted} />
           <Row label="Tactics" value={s.palestine.tactics === 'hard' ? 'HARD' : 'SOFT'} />
           <Row label="Standing army" value={`${s.israel.brigades} brigades`} />
+          <GroundRows s={s} id="israel" />
           <Row
             label="Neighbours still standing"
             value={NATION_IDS.filter((id) => s.nations[id].isFront && !s.nations[id].collapsed).length}

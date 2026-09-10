@@ -9,6 +9,8 @@ import type {
   FactionDirective,
   PowerDirective,
   PowerId,
+  RemoteDirective,
+  RemoteId,
   StrategicDirective,
   SupplierId,
 } from '../engine';
@@ -40,6 +42,7 @@ export interface PlanningHandlers {
   setPower: (id: PowerId, d: PowerDirective) => void;
   setFaction: (id: string, d: FactionDirective) => void;
   setStrategic: (id: FrontId, d: StrategicDirective) => void;
+  setRemote: (id: RemoteId, d: RemoteDirective) => void;
   setPolicing: (d: PolicingDirective) => void;
   setFundNuclear: (v: boolean) => void;
   order: (supplier: SupplierId, itemId: string, qty: number) => string | null;
@@ -69,7 +72,10 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
       Object.keys(d.diplomatic).length +
       Object.keys(d.intel).length +
       Object.keys(d.powers).length,
-    strategic: Object.keys(d.strategic).length + (factionKeys.length - territoryOrders),
+    strategic:
+      Object.keys(d.strategic).length +
+      Object.keys(d.remote).length +
+      (factionKeys.length - territoryOrders),
     arms: d.purchases.length,
     review: 0,
     domestic: (d.policing !== 'none' ? 1 : 0) + (d.fundNuclear ? 1 : 0) + territoryOrders,
@@ -106,7 +112,12 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
         />
       )}
       {tab === 'strategic' && (
-        <Strategic s={s} setStrategic={h.setStrategic} setFaction={h.setFaction} />
+        <Strategic
+          s={s}
+          setStrategic={h.setStrategic}
+          setRemote={h.setRemote}
+          setFaction={h.setFaction}
+        />
       )}
       {tab === 'arms' && (
         <Procurement s={s} onOrder={h.order} onProduction={h.setProductionLine} />

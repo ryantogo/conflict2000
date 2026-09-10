@@ -301,6 +301,16 @@ export function loyaltyLabel(v: number): string {
   return 'Barely worth the paperwork';
 }
 
+/** How much of a country an army holds, as a newspaper would put it. */
+export function occupationLabel(share: number): string {
+  if (share < 0.06) return 'a foothold';
+  if (share < 0.18) return 'about a tenth';
+  if (share < 0.35) return 'about a quarter';
+  if (share < 0.6) return 'about half';
+  if (share < 0.85) return 'most';
+  return 'nearly all';
+}
+
 export function pointsToRelations(points: number): number {
   return clamp(Math.floor((points + 100) / 20.1), 0, 9);
 }

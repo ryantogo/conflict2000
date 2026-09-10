@@ -10,17 +10,15 @@
 import type { GameState, Nation, NationId } from './types';
 import { NATION_IDS } from './types';
 import { clamp, pointsToRelations } from './ladders';
-import { collapseGovernment } from './intelligence';
-import { attrite, countOf } from './fleet';
 import type { Rng } from './rng';
 import {
   COLLAPSE,
   RELATIONS_IMPROVE,
   RELATIONS_WORSEN,
-  VICTORY,
   WAR_DECLARED,
   expand,
 } from '../data/headlines';
+import { resolveRegionalWars, setInterArab, startRegionalWar } from './wars';
 
 export interface AiEvent {
   text: string;
@@ -43,11 +41,7 @@ function rel(a: Nation, b: NationId): number {
   return a.interArab[b] ?? 4;
 }
 
-function setRel(s: GameState, a: NationId, b: NationId, v: number): void {
-  const clamped = clamp(Math.round(v), 0, 9);
-  s.nations[a].interArab[b] = clamped;
-  s.nations[b].interArab[a] = clamped;
-}
+const setRel = setInterArab;
 
 /** How much this state wants to move against Israel this month. */
 function hostilityToIsrael(s: GameState, n: Nation): number {
@@ -124,8 +118,7 @@ export function runAi(s: GameState, rng: Rng): AiEvent[] {
     const p = clamp((advantage - 1) * 0.06 + (1 - nb.stability / 100) * 0.05, 0, 0.14);
     if (!rng.chance(p)) continue;
 
-    na.atWarWith.push(b);
-    nb.atWarWith.push(a);
+    startRegionalWar(s, a, b);
     s.tension = clamp(s.tension + 10, 0, 100);
     events.push({
       text: expand(rng.pick(WAR_DECLARED), pairCtx(na, nb)),
@@ -135,51 +128,7 @@ export function runAi(s: GameState, rng: Rng): AiEvent[] {
   }
 
   // --- resolve wars that do not involve Israel -----------------------------
-  const settled = new Set<string>();
-  for (const a of living) {
-    const na = s.nations[a];
-    for (const b of na.atWarWith) {
-      if (b === 'israel') continue;
-      const key = [a, b].sort().join('-');
-      if (settled.has(key)) continue;
-      settled.add(key);
-      const nb = s.nations[b];
-      if (nb.collapsed) continue;
-
-      const sa =
-        na.forces.brigades * 100 + countOf(na.forces.equipment, 'tank') * 0.05 + na.stability;
-      const sb =
-        nb.forces.brigades * 100 + countOf(nb.forces.equipment, 'tank') * 0.05 + nb.stability;
-      const attackerWins = rng.next() < sa / (sa + sb);
-      const loser = attackerWins ? nb : na;
-      const winner = attackerWins ? na : nb;
-
-      attrite(loser.forces.equipment, 0.1, 'tank');
-      loser.stability = clamp(loser.stability - rng.int(3, 9), 0, 100);
-      attrite(winner.forces.equipment, 0.04, 'tank');
-
-      // Someone eventually breaks.
-      if (loser.stability <= 12 && rng.chance(0.35)) {
-        collapseGovernment(s, loser.id, 'invasion');
-        events.push({
-          text: expand(rng.pick(VICTORY), pairCtx(winner, loser)),
-          category: 'war',
-          weight: 3,
-        });
-        winner.atWarWith = winner.atWarWith.filter((w) => w !== loser.id);
-      } else if (rng.chance(0.18)) {
-        // Or they simply stop.
-        na.atWarWith = na.atWarWith.filter((w) => w !== b);
-        nb.atWarWith = nb.atWarWith.filter((w) => w !== a);
-        setRel(s, a, b, 3);
-        events.push({
-          text: expand('Ceasefire agreed { _ ~ #', pairCtx(na, nb)),
-          category: 'diplomacy',
-          weight: 2,
-        });
-      }
-    }
-  }
+  events.push(...resolveRegionalWars(s, rng));
 
   // --- moves against Israel ------------------------------------------------
   for (const id of rng.shuffle(living)) {

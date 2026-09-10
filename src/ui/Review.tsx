@@ -28,6 +28,8 @@ const ORIGIN_NAME: Record<string, string> = {
   france: 'French-supplied',
   israel: 'Built at home',
   soviet: 'Ex-Soviet',
+  russia: 'Russian-supplied',
+  china: 'Chinese-supplied',
   other: 'Other sources',
 };
 

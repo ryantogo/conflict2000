@@ -46,6 +46,43 @@ export function powerOf(f: Fleet, ...cats: ArmsCategory[]): number {
   return p;
 }
 
+/**
+ * Combat aircraft that can fly to Baghdad, Tehran or Tripoli and come back.
+ * Most of an air force cannot, which is why the long-range strike options
+ * depend on this and not on the size of the air force.
+ */
+export function longRangeCount(f: Fleet): number {
+  let n = 0;
+  for (const [id, held] of Object.entries(f)) {
+    if (held <= 0) continue;
+    const e = equipmentById(id);
+    if (e?.longRange && e.category === 'aircraft') n += held;
+  }
+  return n;
+}
+
+/**
+ * Take long-range aircraft out of a fleet, from the largest squadrons first.
+ * A long-range raid is flown by the aircraft that can make the trip, and it is
+ * those, not a representative slice of the air force, that do not come back.
+ */
+export function drawLongRange(f: Fleet, want: number): Fleet {
+  const taken: Fleet = {};
+  for (let i = 0; i < want; i++) {
+    let best: string | null = null;
+    for (const [id, held] of Object.entries(f)) {
+      const e = equipmentById(id);
+      if (held <= 0 || !e?.longRange || e.category !== 'aircraft') continue;
+      if (best === null || held > f[best]) best = id;
+    }
+    if (best === null) break;
+    f[best] -= 1;
+    taken[best] = (taken[best] ?? 0) + 1;
+  }
+  compact(f);
+  return taken;
+}
+
 /** Every air arm at once — the question `airUnits` used to answer. */
 export function airCount(f: Fleet): number {
   return countOf(f, ...AIR_CATEGORIES);

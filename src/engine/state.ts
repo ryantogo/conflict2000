@@ -20,6 +20,7 @@ export function emptyDirectives(): Directives {
     diplomatic: {},
     intel: {},
     strategic: {},
+    remote: {},
     powers: {},
     factions: {},
     policing: 'none',
@@ -39,6 +40,8 @@ function createFront(id: FrontId): Front {
     territoryHeld: false,
     mobilised: false,
     collapseMonths: 0,
+    occupation: 0,
+    lostGround: 0,
     demilitarised: false,
     demilitarisedMonths: 0,
   };
@@ -57,6 +60,11 @@ function createIsrael(): Israel {
     britain: 35,
     france: 25,
     dealer: 10,
+    // The 1996 agreements made Ankara the one regional military partner we
+    // have. Moscow and Beijing have never sold to us and are curious.
+    turkey: 30,
+    russia: 5,
+    china: 5,
   };
   for (const id of Object.keys(start) as SupplierId[]) {
     suppliers[id] = { loyalty: start[id], embargoed: false, spent: 0 };
@@ -115,6 +123,9 @@ export function createGame(seed = Date.now() & 0x7fffffff): GameState {
       tactics: 'soft',
       homelandCreated: false,
       intifada: false,
+      finalStatus: 'none',
+      intifadaStartTurn: null,
+      quietMonths: 0,
     },
     tension: 34,
     pending: [],
@@ -122,6 +133,8 @@ export function createGame(seed = Date.now() & 0x7fffffff): GameState {
     paper: null,
     briefing: [],
     pendingInterstitial: null,
+    summitKind: 'regular',
+    wire: [],
     ending: null,
     stats: {
       actsOfViolence: 0,
@@ -134,6 +147,9 @@ export function createGame(seed = Date.now() & 0x7fffffff): GameState {
       armsExpenditure: 0,
     },
     factions: createFactions(),
+    wars: [],
+    world: { nineEleven: 'pending', nineElevenTurn: null, grantPaid: false },
+    lastStruck: {},
     firedEvents: [],
     log: [],
   };

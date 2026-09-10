@@ -777,6 +777,10 @@ svg.map {
   vector-effect: non-scaling-stroke;
 }
 
+.map-occupation path {
+  stroke: none;
+}
+
 .map-name {
   font-family: var(--mono);
   font-size: calc(11px * var(--mz, 1));
