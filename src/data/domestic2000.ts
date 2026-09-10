@@ -21,6 +21,7 @@ export const DOMESTIC_EQUIPMENT: EquipmentSpec[] = [
   { id: 'merkava4', name: 'Merkava Mk 4', category: 'tank', power: 15, origin: 'israel' },
   { id: 'arrow2', name: 'Arrow 2 (Homa)', category: 'sam', power: 22, origin: 'israel' },
   { id: 'heron', name: 'IAI Heron', category: 'surveillance', power: 18, origin: 'israel' },
+  { id: 'ofek', name: 'Ofek reconnaissance satellite', category: 'satellite', power: 0, origin: 'israel' },
 ];
 
 export interface ProductionLine {
@@ -45,6 +46,18 @@ export interface ProductionLine {
  * ambassador can stop it.
  */
 export const PRODUCTION_LINES: ProductionLine[] = [
+  {
+    id: 'line_ofek',
+    builds: 'ofek',
+    name: 'Ofek satellite programme',
+    description:
+      'Reconnaissance from orbit. Sees every capital in the region at once, and ' +
+      'no security service can arrest a satellite.',
+    rate: 1,
+    cost: 55,
+    development: 18,
+    developmentCost: 75,
+  },
   {
     id: 'line_merkava3',
     builds: 'merkava3',
@@ -90,6 +103,16 @@ export const PRODUCTION_LINES: ProductionLine[] = [
     developmentCost: 20,
   },
 ];
+
+/**
+ * How much of the fog each overhead asset lifts, everywhere at once. A Heron
+ * watches a border; a satellite watches a country, and there is no network to
+ * roll up and nobody to arrest.
+ */
+export const OVERHEAD_VALUE: Record<string, number> = {
+  heron: 0.02,
+  ofek: 0.16,
+};
 
 export function lineById(id: string): ProductionLine | undefined {
   return PRODUCTION_LINES.find((l) => l.id === id);

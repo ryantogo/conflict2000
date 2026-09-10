@@ -17,7 +17,18 @@ import { CATALOGUE } from './arms2000';
 import { IN_SERVICE } from './inventory2000';
 import { DOMESTIC_EQUIPMENT } from './domestic2000';
 
-export type ArmsCategory = 'tank' | 'aircraft' | 'sam' | 'helicopter' | 'surveillance';
+export type ArmsCategory =
+  | 'tank'
+  | 'aircraft'
+  | 'sam'
+  | 'helicopter'
+  | 'surveillance'
+  /**
+   * Reconnaissance satellites. Deliberately outside `AIR_CATEGORIES` and
+   * therefore worth nothing at all in a battle: an Ofek does not shoot down
+   * aircraft, it tells you where they are.
+   */
+  | 'satellite';
 
 /** Everything that flies. These share a combat weight; only power separates them. */
 export const AIR_CATEGORIES: ArmsCategory[] = ['aircraft', 'helicopter', 'surveillance'];
@@ -68,6 +79,8 @@ export const REGIONAL_NORM: Record<ArmsCategory, number> = {
   helicopter: 10,
   surveillance: 25,
   sam: 7,
+  // Nobody else in the region has one, so there is no norm to speak of.
+  satellite: 1,
 };
 
 const REGISTRY: Record<string, Equipment> = {};

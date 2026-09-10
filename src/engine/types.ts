@@ -50,6 +50,7 @@ export type DiplomaticDirective =
   | 'ceasefire';
 
 export type IntelDirective =
+  | 'collect'
   | 'support_insurgents'
   | 'disrupt_insurgents'
   | 'assassinate'
@@ -150,6 +151,18 @@ export interface Nation {
   oppositionGroup: string;
   /** 0..100 strength of that group. */
   oppositionStrength: number;
+  /**
+   * 0..100 Israeli penetration of this country: agents run, officials turned,
+   * telephones listened to. Built slowly, lost quickly, and the thing that
+   * decides whether the assessment of their army is worth reading.
+   */
+  network: number;
+  /**
+   * −1..1, redrawn each month. Which way our estimate of them is wrong this
+   * month. Stored rather than rolled on demand so that a screen refresh does
+   * not produce a different assessment.
+   */
+  estimateBias: number;
   /** Whether Israel currently funds the opposition or props up the regime. */
   israeliPosture: 'supporting_opposition' | 'supporting_government' | 'neutral';
   /**
@@ -249,6 +262,12 @@ export interface Israel {
    * because a promise you can quietly break is not a promise.
    */
   restraint: number;
+  /**
+   * 0..1 floor on how well we see every country at once, from satellites and
+   * long-endurance reconnaissance. Bought rather than recruited, which is the
+   * whole argument for building either.
+   */
+  overhead: number;
   nuclearPosture: NuclearPosture;
   /** 0..100 toward the next posture step. */
   nuclearProgress: number;

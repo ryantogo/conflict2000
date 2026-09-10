@@ -12,7 +12,12 @@ import { openingInventory } from './inventory2000';
 
 type NationSeed = Omit<
   Nation,
-  'relationsPoints' | 'baseStability' | 'counterIntel' | 'rearmPoints'
+  | 'relationsPoints'
+  | 'baseStability'
+  | 'counterIntel'
+  | 'rearmPoints'
+  | 'network'
+  | 'estimateBias'
 >;
 
 const seeds: NationSeed[] = [
@@ -191,6 +196,22 @@ const seeds: NationSeed[] = [
   },
 ];
 
+/**
+ * How well Israel is placed inside each capital in June 2000. A reach of
+ * exactly the regional middle is worth what an operation was always worth, so
+ * these are the numbers that decide whether the covert route starts ahead or
+ * behind.
+ */
+const OPENING_NETWORK: Record<NationId, number> = {
+  lebanon: 70,
+  jordan: 65,
+  egypt: 60,
+  syria: 55,
+  iraq: 42,
+  iran: 32,
+  libya: 30,
+};
+
 export function createNations(): Record<NationId, Nation> {
   const out = {} as Record<NationId, Nation>;
   for (const s of seeds) {
@@ -208,6 +229,12 @@ export function createNations(): Record<NationId, Nation> {
       // Nobody is looking for us yet.
       counterIntel: 0,
       rearmPoints: 0,
+      // Israel has had people in all of these places for decades. How many,
+      // and how well placed, is not the same everywhere: eighteen years in
+      // southern Lebanon and a liaison relationship with Amman are not the
+      // same kind of access as whatever is left in Tripoli.
+      network: OPENING_NETWORK[s.id],
+      estimateBias: 0,
       // Centre each nation in the middle of its starting relations band.
       relationsPoints: s.relations * 20 - 90,
     };

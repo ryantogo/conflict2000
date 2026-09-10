@@ -15,7 +15,8 @@
 import type { GameState } from './types';
 import { addUnits } from './fleet';
 import { equipmentById } from '../data/equipment';
-import { PRODUCTION_LINES, lineById } from '../data/domestic2000';
+import { OVERHEAD_VALUE, PRODUCTION_LINES, lineById } from '../data/domestic2000';
+import { clamp } from './ladders';
 
 export interface IndustryEvent {
   text: string;
@@ -99,6 +100,20 @@ export function industrySpend(s: GameState): number {
  * Treasury does not extend credit, and a stalled programme keeps whatever
  * development it has already banked.
  */
+/**
+ * How much of the fog our overhead assets currently lift. Diminishing, because
+ * the second satellite tells you rather less than the first, and no amount of
+ * hardware substitutes entirely for somebody in the room.
+ */
+export function recomputeOverhead(s: GameState): void {
+  let raw = 0;
+  for (const [id, held] of Object.entries(s.israel.stockpile.equipment)) {
+    const value = OVERHEAD_VALUE[id];
+    if (value && held > 0) raw += value * held;
+  }
+  s.israel.overhead = clamp(raw / (1 + raw), 0, 0.7);
+}
+
 export function resolveProduction(s: GameState): IndustryEvent[] {
   const events: IndustryEvent[] = [];
   const isr = s.israel;
@@ -134,6 +149,7 @@ export function resolveProduction(s: GameState): IndustryEvent[] {
 
     addUnits(isr.stockpile.equipment, line.builds, line.rate);
     st.delivered += line.rate;
+    if (OVERHEAD_VALUE[line.builds]) recomputeOverhead(s);
     events.push({
       text: `Delivered from our own industry: ${line.rate} x ${
         equipmentById(line.builds)?.name ?? line.builds

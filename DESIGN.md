@@ -161,9 +161,9 @@ Where it landed. Passive players run 120 games each, the strategist 80:
 
 | player | victory | survived decade | invaded | removed or killed |
 | --- | --- | --- | --- | --- |
-| passive, signs everything | 0% | 48% | 36% | 15% |
+| passive, signs everything | 0% | 44% | 43% | 13% |
 | passive, refuses everything | 0% | 0% | 0% | 100% |
-| disciplined strategist | 25% | 10% | 11% | 53% |
+| disciplined strategist | 20% | 13% | 6% | 58% |
 
 Signing at Camp David and then doing nothing survives the decade more often
 than not, and never wins. Refusing and then doing nothing loses every single
@@ -360,7 +360,70 @@ fired at all.
 
 ---
 
-## 7. The map
+## 7. Intelligence
+
+The Strategic Action screen used to print the defender's exact combat weight:
+a number the engine computes out of a data structure the player has no
+business being able to read. Knowing the enemy order of battle to the tank is
+not a small convenience — it is the reason intelligence had nothing to do
+except sabotage. There was no such thing as being surprised.
+
+An assessment is now the truth seen through whatever coverage we have of that
+country, and coverage is something you build and lose. With no sources the
+band runs to plus or minus 55%, which is wide enough to walk into a war
+believing the wrong thing. The error is redrawn once a month and stored, so a
+picture that is wrong is wrong consistently until somebody goes and looks —
+an assessment is a thing the cabinet was given, not something that changes
+while it is being read.
+
+Two ways to see, and they are not substitutes. **Agents** are cheap, specific
+and perishable: a network is built a few points a month, goes cold when
+nobody runs it, and is what an operation is actually carried by. **Overhead**
+— the Heron, and the Ofek satellite programme the hardware phase deliberately
+left out until there was a fog for it to lift — gives a floor everywhere at
+once, including countries with no network at all, and no security service can
+arrest a satellite. An Ofek is worth nothing whatever in a battle, which is
+the point of it.
+
+Counter-surveillance stopped being a flat −6 a month regardless of who was
+hunting. A competent, stable security service keeps its files open for years;
+one whose government is disintegrating forgets us quickly.
+
+**Tuning this took five measurements and four of them were wrong.** The first
+attempt cost the strategist thirteen of its twenty victories, so the two
+changes were separated and run against a neutral build:
+
+| | victories of 80 |
+| --- | --- |
+| neither change | 19 |
+| dynamic counter-surveillance only | 25 |
+| network reach only | 12 |
+
+The decay change was *helping* — the strategist targets unstable states, and
+those now forget it faster. The entire cost was `reach`, which at a starting
+network of twenty amounted to a permanent nineteen per cent penalty on every
+operation: a gate dressed as a reward. Three attempts to teach the reference
+bot to compensate all made it worse, one of them because collecting on four
+countries at a point of capacity each consumed the whole of Mossad's budget
+and left nothing to run the coup with.
+
+The fix was not in the bot. Israel has had people in these places for decades,
+and the standing network should reflect it — eighteen years in southern
+Lebanon and a liaison relationship with Amman are not the same kind of access
+as whatever is left in Tripoli:
+
+| Lebanon | Jordan | Egypt | Syria | Iraq | Iran | Libya |
+| --- | --- | --- | --- | --- | --- | --- |
+| 70 | 65 | 60 | 55 | 42 | 32 | 30 |
+
+Which makes the opening roughly neutral, running agents a real improvement,
+and a network burnt by a failed coup — it drops to a fifth — a disaster you
+have to spend years repairing. That is the shape the mechanic wanted all
+along, and no amount of adjusting the bot would have found it.
+
+---
+
+## 8. The map
 
 The original shipped six EGA maps as run-length scanline data. Decoding them
 took three goes: the records are five bytes (colour, x16, y16), each starting a
@@ -411,7 +474,7 @@ Live state is drawn rather than described: brigade counts thicken the frontier
 they hold, wars dash it red, the territories hatch in proportion to unrest, and
 collapsed governments go grey and struck through.
 
-## 8. Deliberate omissions
+## 9. Deliberate omissions
 
 - **The original pixel art is not used.** The decoders work and the assets are
   fully recoverable (`tools/decode_assets.py`). The map borrows the original's

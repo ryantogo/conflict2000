@@ -3,8 +3,8 @@ import type { FrontId, GameState, StrategicDirective } from '../engine';
 import {
   FRONTS,
   REGIONAL_NORM,
+  assess,
   countOf,
-  enemyStrength,
   freeBrigades,
   grade,
   qualityLabel,
@@ -25,6 +25,8 @@ export function Strategic({
   const [selected, setSelected] = useState<FrontId>('lebanon');
   const front = s.fronts[selected];
   const nation = s.nations[selected];
+  // What we believe, not what is true. The difference is the phase.
+  const view = assess(s, selected);
 
   return (
     <div className="grid2">
@@ -108,20 +110,40 @@ export function Strategic({
               value={Math.round(israeliStrength(s, selected)).toLocaleString()}
             />
             <Row
-              label="Estimated opposing weight"
+              label="Assessed opposing weight"
               value={
                 nation.collapsed
                   ? '—'
-                  : Math.round(enemyStrength(s, selected)).toLocaleString()
+                  : `${Math.round(view.low).toLocaleString()} – ${Math.round(
+                      view.high,
+                    ).toLocaleString()}`
               }
               tone={
-                !nation.collapsed && enemyStrength(s, selected) > israeliStrength(s, selected)
-                  ? 'red'
-                  : 'teal'
+                !nation.collapsed && view.estimate > israeliStrength(s, selected) ? 'red' : 'teal'
               }
             />
           </div>
         </Panel>
+
+        {!nation.collapsed && (
+          <Panel
+            title="Intelligence assessment"
+            right={<span className="mono small faint">{view.confidence}</span>}
+          >
+            <ul className="advice">
+              {view.notes.map((note, i) => (
+                <li key={i} className="small">
+                  {note}
+                </li>
+              ))}
+            </ul>
+            {view.coverage < 0.45 && (
+              <p className="small faint" style={{ marginBottom: 0 }}>
+                Running agents in {nation.name} would narrow this considerably.
+              </p>
+            )}
+          </Panel>
+        )}
       </div>
 
       <Panel title="Strategic action">

@@ -17,7 +17,12 @@ import {
   relationsLabel,
   stabilityLabel,
 } from '../engine';
-import { powerOptions, powerReport, powerStandingLabel } from '../engine';
+import {
+  networkLabel,
+  powerOptions,
+  powerReport,
+  powerStandingLabel,
+} from '../engine';
 import { Bar, Choices, Panel, Row } from './bits';
 
 /** How closely the target's own security service is watching us. */
@@ -223,6 +228,11 @@ export function ForeignOffice({
           {!n.collapsed && (
             <>
               <div className="rows" style={{ marginBottom: 12 }}>
+                <Row
+                  label="Our network there"
+                  value={networkLabel(n.network)}
+                  tone={n.network < 25 ? 'red' : n.network < 40 ? 'amber' : ''}
+                />
                 <Row
                   label="Their counter-intelligence"
                   value={alertLabel(n.counterIntel)}

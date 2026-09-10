@@ -201,6 +201,15 @@ export function powerStandingLabel(v: number): string {
   return 'Hostile';
 }
 
+/** How well placed we are inside a country, as a word. */
+export function networkLabel(v: number): string {
+  if (v >= 78) return 'Deeply placed';
+  if (v >= 58) return 'Well placed';
+  if (v >= 38) return 'Some sources';
+  if (v >= 18) return 'Thin';
+  return 'Blown';
+}
+
 export function pointsToRelations(points: number): number {
   return clamp(Math.floor((points + 100) / 20.1), 0, 9);
 }

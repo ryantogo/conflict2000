@@ -79,6 +79,7 @@ function createIsrael(): Israel {
     coalition: createCoalition(),
     lostConfidence: false,
     restraint: 0,
+    overhead: 0,
     nuclearPosture: 'opacity',
     nuclearProgress: 40,
     warheads: 4,

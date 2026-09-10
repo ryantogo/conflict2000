@@ -526,8 +526,12 @@ export function israeliStrength(s: GameState, id: FrontId): number {
   return d.brigades * 100 + israeliEquipmentWeight(d.equipment, s.israel.readiness);
 }
 
-/** Total combat weight the defender can bring to that front. */
-export function enemyStrength(s: GameState, id: FrontId): number {
+/**
+ * Total combat weight this state can bring to bear. Not restricted to the
+ * four fronts: the assessment screens ask the same question about Iraq and
+ * Iran, who have armies and no shared border.
+ */
+export function enemyStrength(s: GameState, id: NationId): number {
   const n = s.nations[id];
   let base = n.forces.brigades * 78 + enemyEquipmentWeight(n.forces.equipment);
   // A regime falling apart cannot fight well.

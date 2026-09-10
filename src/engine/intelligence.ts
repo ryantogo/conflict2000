@@ -37,6 +37,7 @@ export const EXTREME_THRESHOLD = 70;
 export const MOSSAD_CAPACITY = 4;
 
 const OP_COST: Record<IntelDirective, number> = {
+  collect: 1,
   support_insurgents: 1,
   disrupt_insurgents: 1,
   assassinate: 3,
@@ -45,6 +46,7 @@ const OP_COST: Record<IntelDirective, number> = {
 };
 
 const OP_FUNDS: Record<IntelDirective, number> = {
+  collect: 12,
   support_insurgents: 18,
   disrupt_insurgents: 14,
   assassinate: 60,
@@ -82,6 +84,13 @@ export function intelOptions(s: GameState, id: NationId): IntelOption[] {
   }
 
   const opts: IntelOption[] = [];
+
+  // Always available, in every country, at every stage. Running agents is the
+  // one covert thing that is not an attack.
+  opts.push({
+    id: 'collect',
+    label: `Run agents and gather intelligence${price('collect')}`,
+  });
 
   if (n.oppositionStrength < 8) {
     opts.push({
@@ -134,6 +143,18 @@ export interface IntelEvent {
   weight: number;
 }
 
+/**
+ * How far Mossad can actually reach inside a country. A standing network of
+ * twenty is enough to hear things; turning a colonel takes years of work.
+ *
+ * This is a reward for patience rather than a gate on acting at all — the
+ * first attempt ran from 0.45 to 1.20 and simply made every operation worse,
+ * because a service with no network is not incapable, only clumsy.
+ */
+export function reach(n: { network: number }): number {
+  return 0.7 + (n.network / 100) * 0.55;
+}
+
 export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
   const events: IntelEvent[] = [];
 
@@ -150,8 +171,21 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
       .map(([id]) => id),
   );
   for (const n of Object.values(s.nations)) {
+    // A network nobody is running goes cold: officers are reassigned, sources
+    // stop being paid, telephones are changed. Slower where the state is
+    // falling apart and has other things to worry about.
+    if (!worked.has(n.id)) {
+      n.network = clamp(n.network - (1 + (n.stability / 100) * 2), 0, 100);
+    }
+
     if (worked.has(n.id)) continue;
-    n.counterIntel = clamp(n.counterIntel - 6, 0, 100);
+
+    // Counter-surveillance cools off wherever we are not working — but a
+    // competent, stable security service keeps its files open for years,
+    // while one whose government is disintegrating forgets us quickly. This
+    // used to be a flat six a month regardless of who was hunting.
+    n.counterIntel = clamp(n.counterIntel - (2 + (1 - n.stability / 100) * 6), 0, 100);
+
     // Our posture is what we are doing now, not what we once did. Leaving it
     // set marked a country for the rest of the game and quietly blocked every
     // future attempt to improve relations with it.
@@ -188,6 +222,26 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
     };
 
     switch (directive) {
+      case 'collect': {
+        // Running agents rather than using them. Quiet, cheap, and the only
+        // thing in this file that makes the rest of the game legible.
+        const resistance = 1 + (n.counterIntel / 100) * 1.6;
+        const gain = Math.round((rng.int(4, 9) / resistance) * strain);
+        n.network = clamp(n.network + gain, 0, 100);
+        n.counterIntel = clamp(n.counterIntel + rng.int(1, 4), 0, 100);
+        // Even careful work is occasionally noticed, but nobody starts a war
+        // over a listening post.
+        if (rng.chance(0.03 + n.counterIntel / 500)) {
+          n.counterIntel = clamp(n.counterIntel + rng.int(6, 14), 0, 100);
+          events.push({
+            text: expand('* security service announces arrest of Israeli agents', ctx),
+            category: 'intelligence',
+            weight: 1,
+          });
+        }
+        break;
+      }
+
       case 'support_insurgents': {
         n.israeliPosture = 'supporting_opposition';
         n.counterIntel = clamp(n.counterIntel + rng.int(5, 10), 0, 100);
@@ -223,10 +277,14 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
         s.stats.assassinationsOrdered++;
         s.stats.actsOfViolence++;
         n.counterIntel = clamp(n.counterIntel + rng.int(14, 24), 0, 100);
-        // Weak, unstable, unsuspecting states are easier to decapitate.
+        // Weak, unstable, unsuspecting states are easier to decapitate — and
+        // somebody has to get close enough. An operation is carried by the
+        // network that has been built for it, which is what the patient route
+        // is now actually buying.
         const p =
           (0.12 + (n.oppositionStrength / 100) * 0.34 + (1 - n.stability / 100) * 0.22) *
           (1 - n.counterIntel / 170) *
+          reach(n) *
           strain;
         if (rng.chance(p)) {
           collapseGovernment(s, id, 'assassination');
@@ -238,9 +296,11 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
             weight: 3,
           });
         } else {
-          // A failed attempt hands the regime a gift and burns the network.
+          // A failed attempt hands the regime a gift and burns the network —
+          // and this time it stays burnt. It used to cost a month of noise.
           n.stability = clamp(n.stability + 10, 0, 100);
           n.oppositionStrength = clamp(n.oppositionStrength - rng.int(20, 35), 0, 100);
+          n.network = clamp(n.network * 0.35, 0, 100);
           expose(n, 8);
           events.push({
             text: expand(rng.pick(ASSASSINATION_FAIL), ctx),
@@ -259,6 +319,7 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
         const p =
           (0.1 + (n.oppositionStrength / 100) * 0.42 + (1 - n.stability / 100) * 0.26) *
           (1 - n.counterIntel / 170) *
+          reach(n) *
           strain;
         if (rng.chance(p)) {
           collapseGovernment(s, id, 'coup');
@@ -269,8 +330,11 @@ export function resolveIntelligence(s: GameState, rng: Rng): IntelEvent[] {
             weight: 3,
           });
         } else {
+          // A failed coup is the loudest thing an intelligence service can do,
+          // and the arrests go on for months. Nothing of the network survives.
           n.stability = clamp(n.stability + 14, 0, 100);
           n.oppositionStrength = clamp(n.oppositionStrength - rng.int(30, 50), 0, 100);
+          n.network = clamp(n.network * 0.2, 0, 100);
           expose(n, 10);
           events.push({
             text: expand(rng.pick(COUP_FAIL), ctx),

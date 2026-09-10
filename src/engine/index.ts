@@ -33,6 +33,8 @@ export {
   israeliStrength,
   enemyStrength,
 } from './military';
+export { assess, confidenceLabel, coverage } from './assessment';
+export type { Assessment } from './assessment';
 export {
   LOBBY_COST,
   POWER_IDS,

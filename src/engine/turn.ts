@@ -22,9 +22,10 @@ import { Rng } from './rng';
 import { emptyDirectives, freeBrigades } from './state';
 import { endWar, expireMandates, resolveDiplomacy } from './diplomacy';
 import { driftInternals, resolveIntelligence } from './intelligence';
+import { redrawAssessments } from './assessment';
 import { resolveCombat, resolveStrategic } from './military';
 import { resolveDeliveries, resolveReadiness, updateEmbargoes } from './arms';
-import { resolveProduction } from './industry';
+import { recomputeOverhead, resolveProduction } from './industry';
 import { resolvePalestine } from './palestine';
 import { holocaustCheck, resolveNuclear } from './nuclear';
 import { runAi } from './ai';
@@ -114,6 +115,8 @@ export function resolveTurn(s: GameState): GameState {
 
   // Our own factories deliver alongside the imports.
   events.push(...resolveProduction(s));
+  // Whatever arrived this month may have changed what we can see.
+  recomputeOverhead(s);
 
   // 2. The player's own directives.
   push(
@@ -152,6 +155,11 @@ export function resolveTurn(s: GameState): GameState {
   // offended it has already happened.
   events.push(...resolveCoalition(s, rng));
   updateMeters(s, rng);
+
+  // A month's intelligence picture is settled here and does not move again
+  // until next month, so an assessment is a thing the cabinet was given
+  // rather than something that changes while it is being read.
+  redrawAssessments(s, rng);
 
   // 6. Advance the calendar.
   s.turn++;
