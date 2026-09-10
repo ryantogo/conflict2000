@@ -1,4 +1,6 @@
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 export function Panel({
   title,
@@ -127,22 +129,93 @@ export function WarBar({ progress }: { progress: number }) {
   );
 }
 
+/** Space kept between a tooltip and the anchor it explains, and the screen edge. */
+const TIP_GAP = 8;
+const TIP_MARGIN = 8;
+
 /**
- * A hover explanation. There is no tooltip anywhere else in this game, and no
- * library to reach for, so this is CSS only: a `:hover` and `:focus-visible`
- * reveal on a wrapper that is reachable by keyboard. Explaining a rule to
- * somebody who cannot use a mouse is not an optional part of explaining it.
+ * A hover explanation, revealed on hover and on keyboard focus. Explaining a
+ * rule to somebody who cannot use a mouse is not an optional part of
+ * explaining it.
+ *
+ * The body is portalled to the document and positioned against the viewport.
+ * It used to be an absolutely positioned child of whatever it annotated, and
+ * every panel clips its contents to its rounded corners — so a tip opening
+ * upward out of a panel, and above all one in a panel's own header, was cut
+ * off by the box it was explaining.
  *
  * Tooltips say what the rule is. They never print the number behind it — see
  * the first principle in DESIGN.md.
  */
 export function Tip({ text, children }: { text: string; children: ReactNode }) {
+  const anchor = useRef<HTMLSpanElement>(null);
+  const body = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const id = useId();
+
+  // Measure after the body has rendered invisibly, then place it: above the
+  // anchor if it fits, below it if not, and never past either side of the screen.
+  useLayoutEffect(() => {
+    if (!open) {
+      setPos(null);
+      return;
+    }
+    const a = anchor.current?.getBoundingClientRect();
+    const b = body.current?.getBoundingClientRect();
+    if (!a || !b) return;
+    let top = a.top - b.height - TIP_GAP;
+    if (top < TIP_MARGIN) top = a.bottom + TIP_GAP;
+    const maxLeft = window.innerWidth - b.width - TIP_MARGIN;
+    const left = Math.max(TIP_MARGIN, Math.min(a.left, maxLeft));
+    setPos({ left, top });
+  }, [open, text]);
+
+  // A fixed layer does not follow its anchor, so anything that moves the page
+  // puts the tip away rather than leaving it floating over the wrong thing.
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
   return (
-    <span className="tip" tabIndex={0}>
+    <span
+      ref={anchor}
+      className="tip"
+      tabIndex={0}
+      aria-describedby={open ? id : undefined}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setOpen(false);
+      }}
+    >
       {children}
-      <span className="tip-body" role="tooltip">
-        {text}
-      </span>
+      {open &&
+        createPortal(
+          <span
+            ref={body}
+            id={id}
+            className="tip-body"
+            role="tooltip"
+            style={
+              pos
+                ? { left: pos.left, top: pos.top }
+                : { left: 0, top: 0, visibility: 'hidden' }
+            }
+          >
+            {text}
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }

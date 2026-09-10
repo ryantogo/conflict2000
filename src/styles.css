@@ -892,23 +892,30 @@ svg.map {
    keyboard focus, because a rule explained only to people with a mouse is
    half explained. No transition on the reveal itself: a tooltip that fades in
    is a tooltip you have to wait for.
+
+   The body is portalled to the document and positioned against the viewport
+   by `Tip`, so no panel's clipping can cut it off. It sits above the sticky
+   top bar.
    --------------------------------------------------------------------------- */
 
 .tip {
-  position: relative;
   border-bottom: 1px dotted var(--ink-400);
   cursor: help;
   outline: none;
 }
 
+.tip:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
 .tip-body {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  z-index: 40;
-  display: none;
+  position: fixed;
+  z-index: 60;
+  display: block;
+  pointer-events: none;
   width: max-content;
-  max-width: 280px;
+  max-width: min(280px, calc(100vw - 16px));
   padding: 8px 10px;
   border: 1px solid var(--ink-500);
   border-radius: var(--radius);
@@ -924,25 +931,6 @@ svg.map {
   text-transform: none;
   letter-spacing: 0;
   white-space: normal;
-}
-
-.tip:hover > .tip-body,
-.tip:focus-visible > .tip-body {
-  display: block;
-}
-
-/* A tooltip inside a row would be clipped by the panel's own rounding, and a
-   row is the commonest place to want one. Let the panel body overflow instead;
-   the header keeps its clip because it is the part with the radius on it. */
-.panel .body {
-  overflow: visible;
-}
-
-/* Near the right-hand edge of a column there is no room to open leftward. */
-.row .value .tip-body,
-.tip.right .tip-body {
-  left: auto;
-  right: 0;
 }
 
 /* ---------------------------------------------------------------------------
