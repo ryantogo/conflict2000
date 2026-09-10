@@ -191,6 +191,16 @@ export function serviceabilityLabel(ratio: number): string {
   return 'Crippled by shortages';
 }
 
+/** Standing with a capital outside the region, as a word. */
+export function powerStandingLabel(v: number): string {
+  if (v >= 82) return 'Warm';
+  if (v >= 64) return 'Cordial';
+  if (v >= 46) return 'Correct';
+  if (v >= 30) return 'Cool';
+  if (v >= 15) return 'Estranged';
+  return 'Hostile';
+}
+
 export function pointsToRelations(points: number): number {
   return clamp(Math.floor((points + 100) / 20.1), 0, 9);
 }

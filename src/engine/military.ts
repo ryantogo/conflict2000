@@ -51,6 +51,14 @@ export interface StrategicOption {
  */
 export const RESERVE_STRAIN = 90;
 
+/**
+ * Why the aggressive options are missing. A promise the player can quietly
+ * break is not a promise, so the undertaking removes the option outright and
+ * says why — the same way the game refuses to let you invade a friend.
+ */
+const UNDERTAKING_GIVEN =
+  'Israel has given formal undertakings in the Western capitals. They still bind us.';
+
 const STRIKE_LABELS: Record<string, string> = {
   strike_industrial: 'Tactical airstrike on industrial target',
   strike_military: 'Tactical airstrike on military target',
@@ -174,19 +182,28 @@ export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
 
   // Strike bombing needs poor relations and aircraft to fly.
   if (n.relations <= 3) {
+    const bound = s.israel.restraint > 0;
     const noAir = countOf(s.israel.stockpile.equipment, 'aircraft') < 30;
     for (const k of ['strike_military', 'strike_industrial', 'strike_civilian'] as const) {
       opts.push({
         id: k,
         label: STRIKE_LABELS[k],
-        ...(noAir ? { disabledReason: 'Insufficient aircraft available.' } : {}),
+        ...(bound
+          ? { disabledReason: UNDERTAKING_GIVEN }
+          : noAir
+            ? { disabledReason: 'Insufficient aircraft available.' }
+            : {}),
       });
     }
     if (n.nuclearProgress > 20) {
       opts.push({
         id: 'strike_nuclear',
         label: STRIKE_LABELS.strike_nuclear,
-        ...(noAir ? { disabledReason: 'Insufficient aircraft available.' } : {}),
+        ...(bound
+          ? { disabledReason: UNDERTAKING_GIVEN }
+          : noAir
+            ? { disabledReason: 'Insufficient aircraft available.' }
+            : {}),
       });
     }
   }
@@ -195,7 +212,11 @@ export function strategicOptions(s: GameState, id: FrontId): StrategicOption[] {
   opts.push({
     id: 'invade',
     label: 'Invade',
-    ...(inv.ok ? {} : { disabledReason: inv.reason ?? 'Not possible.' }),
+    ...(s.israel.restraint > 0
+      ? { disabledReason: UNDERTAKING_GIVEN }
+      : inv.ok
+        ? {}
+        : { disabledReason: inv.reason ?? 'Not possible.' }),
   });
 
   // Keyed on the whole column, not just brigades: a front that has lost its

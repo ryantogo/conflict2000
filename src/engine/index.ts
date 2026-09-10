@@ -34,6 +34,16 @@ export {
   enemyStrength,
 } from './military';
 export {
+  LOBBY_COST,
+  POWER_IDS,
+  POWER_NAMES,
+  demandOf,
+  powerOptions,
+  powerReport,
+  relationsWith,
+} from './powers';
+export type { Demand, PowerDirective, PowerId, PowerStatus } from './powers';
+export {
   MAJORITY,
   coalitionReport,
   coalitionSeats,

@@ -8,6 +8,7 @@
 
 import type { FrontId, GameState, Headline, NewspaperIssue } from './types';
 import { FRONTS, NATION_IDS } from './types';
+import type { NationId } from './types';
 import {
   clamp,
   dateLine,
@@ -30,6 +31,24 @@ import { runAi } from './ai';
 import { runRearmament } from './procurement';
 import { coalitionReact, coalitionSeats, resolveCoalition } from './coalition';
 
+/**
+ * What a Palestinian homeland is worth to each capital in the region, and it
+ * is not the same number. A flat +22 to everybody was both too uniform and
+ * too generous: Amman has been carrying the refugee question since 1948 and
+ * Cairo staked its whole regional position on the peace, while Tehran and
+ * Tripoli have no stake in the file at all and merely lose a grievance they
+ * were enjoying.
+ */
+const HOMELAND_GOODWILL: Record<NationId, number> = {
+  jordan: 34,
+  egypt: 30,
+  lebanon: 24,
+  syria: 16,
+  iraq: 12,
+  libya: 8,
+  iran: 6,
+};
+
 /** Thousands of reservists it takes to stand up two brigades. */
 const BRIGADE_MANPOWER = 40;
 
@@ -47,7 +66,15 @@ import { runScripted } from '../data/scripted';
 import { FILLER } from '../data/headlines';
 import { MASTHEADS } from '../data/nations2000';
 import { computeEnding } from './ending';
-import { adjustRelations, relationsWith } from './powers';
+import {
+  POWER_IDS,
+  POWER_NAMES,
+  RESTRAINT_MONTHS,
+  adjustRelations,
+  relationsWith,
+  resolvePowers,
+} from './powers';
+import type { PowerId } from './powers';
 
 interface RawEvent {
   text: string;
@@ -94,6 +121,7 @@ export function resolveTurn(s: GameState): GameState {
     'diplomacy',
   );
   events.push(...resolveIntelligence(s, rng));
+  events.push(...resolvePowers(s, rng));
   events.push(...resolveStrategic(s, rng));
   push(resolveNuclear(s, rng), 'nuclear');
   events.push(...resolvePalestine(s, rng));
@@ -497,6 +525,24 @@ export function summitProposals(s: GameState): SummitProposal[] {
     }
   }
 
+  // The summit trail has always promised that an embargo "might be scrapped
+  // at summit". Until now no such proposal existed and the line was a lie.
+  for (const id of POWER_IDS) {
+    if (!s.israel.suppliers[id].embargoed) continue;
+    const name = POWER_NAMES[id];
+    out.push({
+      id: `embargo:${id}`,
+      title: `${name.toUpperCase()} — THE ARMS EMBARGO`,
+      body:
+        `${name} will lift the embargo, at a price: formal undertakings on our ` +
+        `conduct, given in public and binding for as long as anybody remembers ` +
+        `them. The generals will regard it as being told what to do, and they ` +
+        `will be right. Refusing keeps our hands free and the catalogue shut.`,
+      acceptLabel: 'Give the undertakings and end the embargo',
+      rejectLabel: 'Refuse — we will buy elsewhere',
+    });
+  }
+
   if (s.tension > 50) {
     out.push({
       id: 'armscap',
@@ -572,7 +618,9 @@ export function applySummit(
         s.israel.popularity = clamp(s.israel.popularity - 14, 0, 100);
         coalitionReact(s, 'territorial', 40);
         for (const n of Object.values(s.nations)) {
-          if (!n.collapsed) n.relationsPoints = clamp(n.relationsPoints + 22, -100, 100);
+          if (!n.collapsed) {
+            n.relationsPoints = clamp(n.relationsPoints + HOMELAND_GOODWILL[n.id], -100, 100);
+          }
         }
         notes.push('A Palestinian homeland has been agreed. The PLO stands down.');
       } else {
@@ -587,6 +635,24 @@ export function applySummit(
           s.firedEvents.push('camp-david-refused');
         }
         notes.push('Israel rejected the homeland proposal. The talks broke up without agreement.');
+      }
+    }
+
+    if (id.startsWith('embargo:')) {
+      const power = id.split(':')[1] as PowerId;
+      const name = POWER_NAMES[power];
+      if (accepted) {
+        s.israel.suppliers[power].embargoed = false;
+        adjustRelations(s, power, 25);
+        s.israel.restraint = RESTRAINT_MONTHS;
+        s.israel.prestige = clamp(s.israel.prestige - 5, 0, 100);
+        coalitionReact(s, 'hawkish', -12);
+        notes.push(`${name} has lifted its arms embargo. Israel gave undertakings for it.`);
+      } else {
+        adjustRelations(s, power, -6);
+        s.israel.popularity = clamp(s.israel.popularity + 3, 0, 100);
+        coalitionReact(s, 'hawkish', 6);
+        notes.push(`Israel refused ${name} terms for lifting the embargo.`);
       }
     }
 

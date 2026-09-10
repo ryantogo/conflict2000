@@ -6,6 +6,8 @@ import type {
   IntelDirective,
   NationId,
   PolicingDirective,
+  PowerDirective,
+  PowerId,
   StrategicDirective,
   SupplierId,
 } from '../engine';
@@ -33,6 +35,7 @@ const TABS: { id: Tab; label: string }[] = [
 export interface PlanningHandlers {
   setDiplomatic: (id: NationId, d: DiplomaticDirective) => void;
   setIntel: (id: NationId, d: IntelDirective) => void;
+  setPower: (id: PowerId, d: PowerDirective) => void;
   setStrategic: (id: FrontId, d: StrategicDirective) => void;
   setPolicing: (d: PolicingDirective) => void;
   setFundNuclear: (v: boolean) => void;
@@ -69,7 +72,12 @@ export function Planning({ s, h }: { s: GameState; h: PlanningHandlers }) {
       {tab === 'map' && <MapRoom s={s} h={h} />}
       {tab === 'briefing' && <Briefing s={s} />}
       {tab === 'foreign' && (
-        <ForeignOffice s={s} setDiplomatic={h.setDiplomatic} setIntel={h.setIntel} />
+        <ForeignOffice
+          s={s}
+          setDiplomatic={h.setDiplomatic}
+          setIntel={h.setIntel}
+          setPower={h.setPower}
+        />
       )}
       {tab === 'strategic' && <Strategic s={s} setStrategic={h.setStrategic} />}
       {tab === 'arms' && (

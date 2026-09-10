@@ -6,6 +6,8 @@ import type {
   IntelDirective,
   NationId,
   PolicingDirective,
+  PowerDirective,
+  PowerId,
   StrategicDirective,
   SupplierId,
 } from './engine';
@@ -60,6 +62,11 @@ export default function App() {
     setDiplomatic: (id: NationId, d: DiplomaticDirective) => {
       if (game.directives.diplomatic[id] === d) delete game.directives.diplomatic[id];
       else game.directives.diplomatic[id] = d;
+      touch();
+    },
+    setPower: (id: PowerId, d: PowerDirective) => {
+      if (game.directives.powers[id] === d) delete game.directives.powers[id];
+      else game.directives.powers[id] = d;
       touch();
     },
     setIntel: (id: NationId, d: IntelDirective) => {

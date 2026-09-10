@@ -6,7 +6,7 @@
  * chosen during the turn and applied all at once when the turn resolves.
  */
 
-import type { PowerId, PowerState } from './powers';
+import type { PowerDirective, PowerId, PowerState } from './powers';
 
 export type NationId =
   | 'egypt'
@@ -88,6 +88,8 @@ export interface Directives {
   diplomatic: Partial<Record<NationId, DiplomaticDirective>>;
   intel: Partial<Record<NationId, IntelDirective>>;
   strategic: Partial<Record<FrontId, StrategicDirective>>;
+  /** Approaches to the capitals that are not in the region. */
+  powers: Partial<Record<PowerId, PowerDirective>>;
   policing: PolicingDirective;
   fundNuclear: boolean;
   /** Orders placed with suppliers this month; delivered after a lead time. */
@@ -241,6 +243,12 @@ export interface Israel {
   coalition: Record<string, { satisfaction: number; inCoalition: boolean }>;
   /** Set the month a no-confidence motion carries. Ends the game. */
   lostConfidence: boolean;
+  /**
+   * Months an undertaking given to a Western capital still binds us. While it
+   * runs, the aggressive options are off the menu — with the reason shown,
+   * because a promise you can quietly break is not a promise.
+   */
+  restraint: number;
   nuclearPosture: NuclearPosture;
   /** 0..100 toward the next posture step. */
   nuclearProgress: number;

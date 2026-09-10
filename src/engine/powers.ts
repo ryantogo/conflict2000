@@ -14,6 +14,8 @@
 
 import type { GameState } from './types';
 import { clamp } from './ladders';
+import type { Rng } from './rng';
+import { coalitionReact } from './coalition';
 
 export type PowerId = 'usa' | 'britain' | 'france';
 
@@ -97,4 +99,215 @@ export function adjustWest(s: GameState, delta: number): void {
   adjustRelations(s, 'usa', delta);
   adjustRelations(s, 'britain', delta * 0.6);
   adjustRelations(s, 'france', delta * 0.4);
+}
+
+// ---------------------------------------------------------------------------
+// What they want, and what we can do about it
+// ---------------------------------------------------------------------------
+
+/**
+ * The one thing this capital is currently pressing us about. Derived from our
+ * own conduct rather than stored, so it always describes the present.
+ */
+export type Demand =
+  | 'halt_strikes'
+  | 'settle_the_war'
+  | 'ease_policing'
+  | 'nuclear_restraint'
+  | 'stop_the_dealer'
+  | null;
+
+export const DEMAND_TEXT: Record<NonNullable<Demand>, string> = {
+  halt_strikes: 'an end to the air strikes',
+  settle_the_war: 'a ceasefire on the border',
+  ease_policing: 'an easing of the policing of the territories',
+  nuclear_restraint: 'no further nuclear announcements',
+  stop_the_dealer: 'an end to our purchases on the grey market',
+};
+
+export function demandOf(s: GameState, id: PowerId): Demand {
+  // Ordered by how loudly it is being said. A capital presses one thing.
+  if (Object.values(s.fronts).some((f) => f.atWar)) return 'settle_the_war';
+  if (s.stats.strikesOrdered > 2) return 'halt_strikes';
+  if (s.israel.nuclearPosture !== 'opacity') return 'nuclear_restraint';
+  if (s.palestine.tactics === 'hard' && s.palestine.brigadesPosted > 0) return 'ease_policing';
+  // Paris and London mind the grey market rather less than Washington does.
+  if (id === 'usa' && s.israel.suppliers.dealer.spent > 200) return 'stop_the_dealer';
+  return null;
+}
+
+export type PowerDirective = 'none' | 'lobby' | 'concede' | 'defy';
+
+export interface PowerOption {
+  id: PowerDirective;
+  label: string;
+  disabledReason?: string;
+}
+
+/** What a month of quiet diplomacy costs. */
+export const LOBBY_COST = 40;
+
+/** Months of good behaviour a formal undertaking buys them. */
+export const RESTRAINT_MONTHS = 8;
+
+export function powerOptions(s: GameState, id: PowerId): PowerOption[] {
+  const opts: PowerOption[] = [];
+  const demand = demandOf(s, id);
+  const rel = relationsWith(s, id);
+
+  opts.push({
+    id: 'lobby',
+    label: `Quiet diplomacy in ${POWER_NAMES[id] === 'United States' ? 'Washington' : POWER_NAMES[id]} — $${LOBBY_COST} M`,
+    ...(s.israel.funds < LOBBY_COST
+      ? { disabledReason: 'There is nothing in the fund for it this month.' }
+      : rel >= 96
+        ? { disabledReason: 'The relationship could hardly be better than it is.' }
+        : {}),
+  });
+
+  opts.push({
+    id: 'concede',
+    label: demand
+      ? `Give formal undertakings on ${DEMAND_TEXT[demand]}`
+      : 'Give formal undertakings',
+    ...(demand
+      ? s.israel.restraint > 0
+        ? { disabledReason: 'We have already given undertakings that still bind us.' }
+        : {}
+      : { disabledReason: 'They are pressing us about nothing in particular.' }),
+  });
+
+  opts.push({
+    id: 'defy',
+    label: 'Reject their demands publicly',
+    ...(demand ? {} : { disabledReason: 'There is nothing on the table to reject.' }),
+  });
+
+  opts.push({ id: 'none', label: 'Take no action' });
+  return opts;
+}
+
+export interface PowerEvent {
+  text: string;
+  category: 'diplomacy';
+  weight: number;
+}
+
+/**
+ * A month of dealing with the capitals that are not in the region.
+ *
+ * Lobbying works, and works less well each time it is tried — a capital that
+ * has heard the argument four times running is not hearing it a fifth. That
+ * is what `patience` is for, and it is why there is no strategy of simply
+ * buying the relationship back a month at a time.
+ */
+export function resolvePowers(s: GameState, rng: Rng): PowerEvent[] {
+  const events: PowerEvent[] = [];
+
+  for (const id of POWER_IDS) {
+    const directive = s.directives.powers[id];
+    const power = s.israel.powers[id];
+
+    // Patience returns while we are not asking for anything.
+    if (!directive || directive === 'none') {
+      power.patience = clamp(power.patience + 4, 0, 100);
+      continue;
+    }
+
+    const demand = demandOf(s, id);
+    const name = POWER_NAMES[id];
+
+    switch (directive) {
+      case 'lobby': {
+        if (s.israel.funds < LOBBY_COST) break;
+        s.israel.funds -= LOBBY_COST;
+        // Worth the most when they have not heard it recently.
+        const gain = Math.round(rng.int(3, 7) * (power.patience / 100));
+        adjustRelations(s, id, gain);
+        power.patience = clamp(power.patience - 30, 0, 100);
+        events.push({
+          text:
+            gain >= 4
+              ? `Israeli delegation well received in ${name}`
+              : `Israeli approaches to ${name} make little impression`,
+          category: 'diplomacy',
+          weight: 0,
+        });
+        break;
+      }
+
+      case 'concede': {
+        if (!demand || s.israel.restraint > 0) break;
+        adjustRelations(s, id, rng.int(12, 18));
+        // The other two notice, less.
+        for (const other of POWER_IDS) {
+          if (other !== id) adjustRelations(s, other, rng.int(2, 5));
+        }
+        s.israel.restraint = RESTRAINT_MONTHS;
+        s.israel.prestige = clamp(s.israel.prestige - 4, 0, 100);
+        // Undertakings given to foreigners play badly with the right.
+        coalitionReact(s, 'hawkish', -10);
+        events.push({
+          text: `Israel gives ${name} formal undertakings on ${DEMAND_TEXT[demand]}`,
+          category: 'diplomacy',
+          weight: 2,
+        });
+        break;
+      }
+
+      case 'defy': {
+        if (!demand) break;
+        adjustRelations(s, id, -rng.int(7, 12));
+        s.israel.popularity = clamp(s.israel.popularity + 3, 0, 100);
+        coalitionReact(s, 'hawkish', 8);
+        events.push({
+          text: `Israel rejects ${name} demands for ${DEMAND_TEXT[demand]}`,
+          category: 'diplomacy',
+          weight: 2,
+        });
+        break;
+      }
+    }
+  }
+
+  // An undertaking runs down whether or not anybody is watching.
+  if (s.israel.restraint > 0) {
+    s.israel.restraint--;
+    if (s.israel.restraint === 0) {
+      events.push({
+        text: 'The undertakings given to the Western capitals have run their course.',
+        category: 'diplomacy',
+        weight: 0,
+      });
+    }
+  }
+
+  return events;
+}
+
+export interface PowerStatus {
+  id: PowerId;
+  name: string;
+  relations: number;
+  patience: number;
+  embargoed: boolean;
+  loyalty: number;
+  demand: Demand;
+  demandText: string | null;
+}
+
+export function powerReport(s: GameState): PowerStatus[] {
+  return POWER_IDS.map((id) => {
+    const demand = demandOf(s, id);
+    return {
+      id,
+      name: POWER_NAMES[id],
+      relations: relationsWith(s, id),
+      patience: s.israel.powers[id].patience,
+      embargoed: s.israel.suppliers[id].embargoed,
+      loyalty: s.israel.suppliers[id].loyalty,
+      demand,
+      demandText: demand ? DEMAND_TEXT[demand] : null,
+    };
+  });
 }

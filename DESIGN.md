@@ -163,7 +163,7 @@ Where it landed. Passive players run 120 games each, the strategist 80:
 | --- | --- | --- | --- | --- |
 | passive, signs everything | 0% | 48% | 36% | 15% |
 | passive, refuses everything | 0% | 0% | 0% | 100% |
-| disciplined strategist | 30% | 5% | 11% | 54% |
+| disciplined strategist | 25% | 10% | 11% | 53% |
 
 Signing at Camp David and then doing nothing survives the decade more often
 than not, and never wins. Refusing and then doing nothing loses every single
@@ -305,7 +305,62 @@ constraint is a decision rather than a tax.
 
 ---
 
-## 6. The map
+## 6. The powers
+
+Washington was never an actor. It was a single scalar, `israel.usRelations`,
+moved by twenty-odd callers each restating the same clamp by hand, with no
+menu, no demands, and nobody on the other end of it. That is the whole reason
+an arms embargo had no lever: there was nothing to negotiate *with*. The
+summit trail had been printing "U.S. embargo on Israel might be scrapped at
+summit" since the first commit, and no such proposal existed.
+
+The three Western capitals are deliberately not `NationId`s. They have no
+border, no stability, no opposition to fund and no army you can mass on. What
+they have is a relationship, a price, and a memory — and, unlike the
+neighbours, they will tell you what they want.
+
+**They stopped agreeing with each other.** An embargo used to be one boolean:
+Washington declared, and Paris and London were assigned the same value on the
+next line. Each now decides on its own relationship and its own appetite for
+the row. London is narrow and reliable and does not want the argument; Paris
+embargoed Israel unilaterally in 1967, kept it for a decade, and has never
+entirely stopped enjoying having done it. Paris is reliably the first capital
+to stop selling, and does not need anybody's permission.
+
+**There are now three things to do about it.** Quiet diplomacy costs $40 M and
+works, and works less well each time — a capital that has heard the argument
+four times running is not hearing it a fifth, which is what `patience` is for
+and why there is no strategy of simply buying the relationship back a month at
+a time. Formal undertakings buy a great deal of goodwill and *bind*: for eight
+months the strikes and the invasion are off the menu, with the reason shown,
+because a promise the player can quietly break is not a promise. Or you can
+tell them where to go, which costs the relationship and plays well at home.
+
+A nuclear strike no longer closes the road permanently. The deed does not
+declare the embargo — the forty-five points it costs the relationship do that.
+What it does is raise the bar afterwards from thirty to seventy: steep, and
+survivable.
+
+Camp David is no longer worth the same everywhere. A flat `+22` to all seven
+capitals was both too uniform and too generous. Amman has carried the refugee
+question since 1948 and Cairo staked its regional position on the peace;
+Tehran and Tripoli have no stake in the file and merely lose a grievance they
+were enjoying.
+
+| Jordan | Egypt | Lebanon | Syria | Iraq | Libya | Iran |
+| --- | --- | --- | --- | --- | --- | --- |
+| +34 | +30 | +24 | +16 | +12 | +8 | +6 |
+
+Two bugs here were found by tests rather than by reasoning, both invisible to
+every balance measure because every bot in the harness buys only from
+Washington. Paris opened at 36 relations against its own embargo line of 39,
+so France was embargoed from month one. And the nuclear clause triggered on
+relations *above* seventy rather than raising the bar for lifting, so it never
+fired at all.
+
+---
+
+## 7. The map
 
 The original shipped six EGA maps as run-length scanline data. Decoding them
 took three goes: the records are five bytes (colour, x16, y16), each starting a
@@ -356,7 +411,7 @@ Live state is drawn rather than described: brigade counts thicken the frontier
 they hold, wars dash it red, the territories hatch in proportion to unrest, and
 collapsed governments go grey and struck through.
 
-## 7. Deliberate omissions
+## 8. Deliberate omissions
 
 - **The original pixel art is not used.** The decoders work and the assets are
   fully recoverable (`tools/decode_assets.py`). The map borrows the original's

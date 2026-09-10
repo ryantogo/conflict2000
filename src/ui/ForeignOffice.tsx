@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import type { DiplomaticDirective, GameState, IntelDirective, NationId } from '../engine';
+import type {
+  DiplomaticDirective,
+  GameState,
+  IntelDirective,
+  NationId,
+  PowerDirective,
+  PowerId,
+} from '../engine';
 import {
   MOSSAD_CAPACITY,
   NATION_IDS,
@@ -10,6 +17,7 @@ import {
   relationsLabel,
   stabilityLabel,
 } from '../engine';
+import { powerOptions, powerReport, powerStandingLabel } from '../engine';
 import { Bar, Choices, Panel, Row } from './bits';
 
 /** How closely the target's own security service is watching us. */
@@ -21,14 +29,98 @@ function alertLabel(v: number): string {
   return 'Hostile service is hunting us';
 }
 
+/**
+ * The capitals that are not in the region. They have no border and no army,
+ * so they get a card rather than a place on the map — the same treatment
+ * Libya has always had.
+ */
+function ThePowers({
+  s,
+  setPower,
+}: {
+  s: GameState;
+  setPower: (id: PowerId, d: PowerDirective) => void;
+}) {
+  const [selected, setSelected] = useState<PowerId>('usa');
+  const powers = powerReport(s);
+  const chosen = powers.find((p) => p.id === selected)!;
+
+  return (
+    <Panel title="The Western capitals">
+      <div className="rows">
+        {powers.map((p) => (
+          <button
+            key={p.id}
+            className={`choice${selected === p.id ? ' selected' : ''}`}
+            onClick={() => setSelected(p.id)}
+            style={{ marginBottom: 4 }}
+          >
+            <span className="tick">{selected === p.id ? '▸' : ''}</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                <span>
+                  {p.name}
+                  {p.embargoed ? <span className="pill war"> embargo</span> : null}
+                  {s.directives.powers[p.id] ? <span className="amber"> ●</span> : null}
+                </span>
+                <span className="mono small faint">{powerStandingLabel(p.relations)}</span>
+              </span>
+              {p.demandText && (
+                <span className="why" style={{ fontStyle: 'normal' }}>
+                  Pressing us for {p.demandText}.
+                </span>
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="kicker" style={{ marginTop: 16 }}>
+        {chosen.name}
+      </div>
+      <div className="rows">
+        <Row label="Standing" value={powerStandingLabel(chosen.relations)} />
+        <Row
+          label="Willing to hear us"
+          value={chosen.patience >= 70 ? 'Yes' : chosen.patience >= 35 ? 'Tiring of it' : 'No'}
+          tone={chosen.patience < 35 ? 'amber' : ''}
+        />
+        <Row
+          label="Arms sales"
+          value={chosen.embargoed ? 'Embargoed' : 'Open'}
+          tone={chosen.embargoed ? 'red' : ''}
+        />
+        <Row label="Their demand" value={chosen.demandText ?? 'Nothing in particular'} />
+        {s.israel.restraint > 0 && (
+          <Row
+            label="Undertakings given"
+            value={`${s.israel.restraint} month${s.israel.restraint === 1 ? '' : 's'} to run`}
+            tone="amber"
+          />
+        )}
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <Choices
+          options={powerOptions(s, selected)}
+          selected={s.directives.powers[selected]}
+          onSelect={(d) => setPower(selected, d)}
+        />
+      </div>
+    </Panel>
+  );
+}
+
 export function ForeignOffice({
   s,
   setDiplomatic,
   setIntel,
+  setPower,
 }: {
   s: GameState;
   setDiplomatic: (id: NationId, d: DiplomaticDirective) => void;
   setIntel: (id: NationId, d: IntelDirective) => void;
+  setPower: (id: PowerId, d: PowerDirective) => void;
 }) {
   const [selected, setSelected] = useState<NationId>('syria');
   const n = s.nations[selected];
@@ -156,6 +248,8 @@ export function ForeignOffice({
             </p>
           )}
         </Panel>
+
+        <ThePowers s={s} setPower={setPower} />
       </div>
     </div>
   );
